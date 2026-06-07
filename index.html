@@ -305,7 +305,11 @@ let CHART_UID=0;
 function lineChart(points, opts={}){
   // points: [{x:short label, f:full label, y:value}]
   if(points.length===0) return '<div class="empty">Keine Daten</div>';
-  const W=680,H=240,P={l:48,r:14,t:18,b:34};
+  // Auf schmalen Screens kleinere Zeichenfläche → Beschriftungen rendern 1:1 lesbar
+  const mob=(window.innerWidth||680)<520;
+  const W=mob?360:680, H=mob?230:240;
+  const P=mob?{l:42,r:10,t:16,b:28}:{l:48,r:14,t:18,b:34};
+  const FS=mob?11.5:10, FST=mob?12.5:11.5;
   const col=opts.color||"#FF5A5A";
   const ys=points.map(p=>p.y);
   let ymin=Math.min(...ys), ymax=Math.max(...ys);
@@ -317,12 +321,12 @@ function lineChart(points, opts={}){
   for(let g=0;g<=4;g++){
     const v=ymin+(ymax-ymin)*g/4, y=Y(v);
     grid+=`<line x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}" stroke="#33373D" stroke-width="1"/>`;
-    labels+=`<text x="${P.l-7}" y="${y+4}" fill="#9BA0A8" font-size="10" text-anchor="end">${fmt(Math.round(v))}</text>`;
+    labels+=`<text x="${P.l-6}" y="${y+4}" fill="#9BA0A8" font-size="${FS}" text-anchor="end">${fmt(Math.round(v))}</text>`;
   }
-  const step=Math.ceil(points.length/7);
+  const step=Math.ceil(points.length/(mob?5:7));
   points.forEach((p,i)=>{
     if(i%step===0||i===points.length-1)
-      labels+=`<text x="${X(i)}" y="${H-10}" fill="#9BA0A8" font-size="10" text-anchor="middle">${p.x}</text>`;
+      labels+=`<text x="${X(i)}" y="${H-8}" fill="#9BA0A8" font-size="${FS}" text-anchor="middle">${p.x}</text>`;
   });
   const path=points.map((p,i)=>`${i?"L":"M"}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`).join(" ");
   const area=path+`L${X(points.length-1)},${Y(ymin)}L${X(0)},${Y(ymin)}Z`;
@@ -331,10 +335,10 @@ function lineChart(points, opts={}){
   points.forEach((p,i)=>{
     const cx=X(i).toFixed(1), cy=Y(p.y).toFixed(1);
     if(i===best&&points.length>1)
-      dots+=`<circle cx="${cx}" cy="${cy}" r="7.5" fill="none" stroke="#3ddc84" stroke-width="2"/>`;
-    dots+=`<circle cx="${cx}" cy="${cy}" r="3.5" fill="${col}"/>`;
+      dots+=`<circle cx="${cx}" cy="${cy}" r="${mob?8.5:7.5}" fill="none" stroke="#3ddc84" stroke-width="2"/>`;
+    dots+=`<circle cx="${cx}" cy="${cy}" r="${mob?4.5:3.5}" fill="${col}"/>`;
     const lbl=`${p.f||p.x}: ${fmt(p.y)} kg${i===best&&points.length>1?" · Bestwert":""}`;
-    hits+=`<circle cx="${cx}" cy="${cy}" r="15" fill="transparent" style="cursor:pointer" data-x="${cx}" data-y="${cy}" data-l="${lbl}" onclick="chartTip(this)" onmouseenter="chartTip(this)" onmouseleave="chartTipHide(this)"/>`;
+    hits+=`<circle cx="${cx}" cy="${cy}" r="16" fill="transparent" style="cursor:pointer" data-x="${cx}" data-y="${cy}" data-l="${lbl}" onclick="chartTip(this)" onmouseenter="chartTip(this)" onmouseleave="chartTipHide(this)"/>`;
   });
   const uid="cg"+(++CHART_UID);
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
@@ -347,8 +351,8 @@ function lineChart(points, opts={}){
     <path d="${path}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>
     ${dots}${hits}
     <g class="ttg" style="display:none;pointer-events:none">
-      <rect height="26" rx="7" fill="#2A2D32" stroke="#33373D"/>
-      <text y="17" fill="#FFFFFF" font-size="11.5" font-weight="600" text-anchor="middle"></text>
+      <rect height="${mob?29:26}" rx="7" fill="#2A2D32" stroke="#33373D"/>
+      <text y="${mob?19:17}" fill="#FFFFFF" font-size="${FST}" font-weight="600" text-anchor="middle"></text>
     </g></svg>`;
 }
 function chartTipHide(el){
@@ -359,13 +363,15 @@ function chartTip(el){
   const g=svg.querySelector(".ttg");
   const lbl=el.dataset.l;
   g.dataset.cur=lbl;
+  const W=svg.viewBox.baseVal.width;
+  const mob=W<500;
   const x=+el.dataset.x, y=+el.dataset.y;
-  const wdt=lbl.length*6.6+18;
+  const wdt=lbl.length*(mob?7.3:6.6)+18;
   g.querySelector("rect").setAttribute("width",wdt);
   const txt=g.querySelector("text");
   txt.textContent=lbl; txt.setAttribute("x",wdt/2);
-  const tx=Math.min(Math.max(x-wdt/2,4),680-wdt-4);
-  const ty=y-40<4?y+16:y-40;
+  const tx=Math.min(Math.max(x-wdt/2,4),W-wdt-4);
+  const ty=y-(mob?44:40)<4?y+18:y-(mob?44:40);
   g.setAttribute("transform",`translate(${tx},${ty})`);
   g.style.display="block";
 }

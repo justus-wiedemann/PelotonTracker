@@ -121,12 +121,31 @@ svg text{font-family:inherit}
 .hdelta.down{color:var(--accent2);background:rgba(255,90,90,.12)}
 .del.neutral{color:var(--text)}
 .hist-body .del{margin-top:0}
+#gate{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.gate-title{font-family:var(--display);font-size:22px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.gate-title span{color:var(--accent)}
+.gate-sub{color:var(--muted);font-size:13px;margin-bottom:10px}
+.gate-dots{display:flex;gap:14px;margin-bottom:22px;height:14px}
+.gate-dots i{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--muted);transition:background .1s}
+.gate-dots i.on{background:var(--accent);border-color:var(--accent)}
+.gate-pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px}
+.gate-pad button{width:72px;height:72px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:26px;font-weight:700;cursor:pointer;font-family:"Inter",sans-serif}
+.gate-pad button:active{background:var(--card2)}
+.gate-pad button.empty{visibility:hidden}
+@keyframes gateShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-9px)}75%{transform:translateX(9px)}}
+.gate-dots.err{animation:gateShake .3s}
 .banner{background:rgba(255,90,90,.1);border:1px solid var(--accent);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.6;margin-bottom:14px}
 .banner .lnk2{background:none;border:0;color:var(--accent2);font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;padding:0}
 @media(max-width:420px){.cards{grid-template-columns:1fr 1fr}.card .value{font-size:20px}}
 </style>
 </head>
 <body>
+<div id="gate">
+  <div class="gate-title">THE <span>STRONGER</span> YOU</div>
+  <div class="gate-sub">PIN eingeben</div>
+  <div class="gate-dots" id="gateDots"></div>
+  <div class="gate-pad" id="gatePad"></div>
+</div>
 <header class="hero">
   <div class="stripes"></div>
   <div class="hero-in">
@@ -700,9 +719,30 @@ async function syncAfterChange(){
   catch(e){ setDirty(true); syncErr("Cloud gerade nicht erreichbar – wird beim nächsten Start synchronisiert."); }
   renderSyncPanel();
 }
+/* PIN-Verschlüsselung: Token liegt nie im Klartext auf der Platte */
+async function deriveKey(pin,salt){
+  const km=await crypto.subtle.importKey("raw",new TextEncoder().encode(pin),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},km,
+    {name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function encTok(token,pin){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(pin,salt);
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(token)));
+  const b64=a=>btoa(String.fromCharCode(...a));
+  return {s:b64(salt),i:b64(iv),c:b64(ct)};
+}
+async function decTok(blob,pin){
+  const b=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+  const key=await deriveKey(pin,b(blob.s));
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b(blob.i)},key,b(blob.c));
+  return new TextDecoder().decode(pt);
+}
 async function connectSync(){
   const t=document.getElementById("ghToken").value.trim();
+  const pin=GATE_PIN;
   if(!t){toast("Bitte Token einfügen");return;}
+  if(!pin){toast("App-PIN fehlt – bitte App neu laden");return;}
   const h={Authorization:"Bearer "+t,Accept:"application/vnd.github+json","Content-Type":"application/json"};
   try{
     let gistId=null;
@@ -717,12 +757,27 @@ async function connectSync(){
       if(!r.ok) throw new Error("Gist anlegen fehlgeschlagen (HTTP "+r.status+") – hat der Token den Scope „gist“?");
       gistId=(await r.json()).id;
     }
-    SYNC={token:t,gistId};
-    try{localStorage.setItem(SYNC_KEY,JSON.stringify(SYNC));}catch(e){}
+    const enc=await encTok(t,pin);
+    try{localStorage.setItem(SYNC_KEY,JSON.stringify({gistId,enc}));}catch(e){}
+    SYNC={token:t,gistId}; // nur im Arbeitsspeicher
     toast("Cloud verbunden ✓");
     renderBanner();
     await initCloud();
   }catch(e){toast(e.message);}
+}
+async function unlockSync(){
+  const pin=document.getElementById("pinIn").value;
+  if(!pin){toast("PIN eingeben");return;}
+  let cfg=null;
+  try{cfg=JSON.parse(localStorage.getItem(SYNC_KEY));}catch(e){}
+  if(!cfg||!cfg.enc){renderSyncPanel();return;}
+  try{
+    const tok=await decTok(cfg.enc,pin);
+    SYNC={token:tok,gistId:cfg.gistId};
+    toast("Entsperrt ✓");
+    renderBanner();
+    await initCloud();
+  }catch(e){toast("Falsche PIN");}
 }
 function disconnectSync(){
   if(!confirm("Cloud-Sync trennen? Daten bleiben lokal und im Gist erhalten."))return;
@@ -730,15 +785,26 @@ function disconnectSync(){
   try{localStorage.removeItem(SYNC_KEY);}catch(e){}
   renderSyncPanel();renderBanner();
 }
+function syncConfigured(){
+  try{const c=JSON.parse(localStorage.getItem(SYNC_KEY));return !!(c&&c.enc&&c.gistId);}catch(e){return false;}
+}
 function renderSyncPanel(){
   const p=document.getElementById("syncPanel");
   if(!p) return;
-  if(!SYNC){
+  if(!SYNC&&syncConfigured()){
+    p.innerHTML=`<h2>Cloud-Sync <small>gesperrt</small></h2>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:12px">
+        Mit deiner PIN entsperren, um automatisch zu synchronisieren. Ohne PIN arbeitet die App nur lokal.</p>
+      <div class="field"><label>PIN</label><input type="password" id="pinIn" inputmode="numeric" autocomplete="off"
+        onkeydown="if(event.key==='Enter')unlockSync()"></div>
+      <button class="btn ghost" onclick="unlockSync()">Entsperren</button>`;
+  }else if(!SYNC){
     p.innerHTML=`<h2>Cloud-Sync</h2>
       <p style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:12px">
-        Automatisches Speichern in ein privates GitHub-Gist – iPhone und Mac immer synchron, kein Datei-Schieben.
+        Automatisches Speichern in ein privates GitHub-Gist – iPhone und Mac immer synchron.
         Einmalig nötig: GitHub-Token (Classic) mit Scope <b style="color:var(--text)">gist</b> unter
-        github.com → Settings → Developer settings → Personal access tokens.</p>
+        github.com → Settings → Developer settings → Personal access tokens.
+        Der Token wird mit deiner App-PIN verschlüsselt (AES-256) und liegt nie im Klartext auf dem Gerät.</p>
       <div class="field"><label>GitHub-Token</label><input type="password" id="ghToken" placeholder="ghp_…" autocomplete="off"></div>
       <button class="btn ghost" onclick="connectSync()">Verbinden</button>`;
   }else{
@@ -755,12 +821,60 @@ function renderSyncPanel(){
   }
 }
 let SYNC=null;
-try{SYNC=JSON.parse(localStorage.getItem(SYNC_KEY));}catch(e){}
-if(SYNC&&(!SYNC.token||!SYNC.gistId)) SYNC=null;
+
+/* ---------- PIN-Gate ---------- */
+const GATE_HASH="7f1a03d4b0aafa1461ec08711d8f1af51e9885ec6a18533b0eec4564d7abfa05";
+const GATE_LEN=6;
+let GATE_PIN="", gateEntry="";
+async function sha256hex(s){
+  const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+function gateDots(){
+  document.getElementById("gateDots").innerHTML=
+    Array.from({length:GATE_LEN},(_,i)=>`<i class="${i<gateEntry.length?"on":""}"></i>`).join("");
+}
+function gatePad(){
+  const keys=["1","2","3","4","5","6","7","8","9","","0","⌫"];
+  document.getElementById("gatePad").innerHTML=keys.map(k=>
+    `<button class="${k===""?"empty":""}" onclick="gateKey('${k}')">${k}</button>`).join("");
+}
+async function gateKey(k){
+  if(k==="⌫"){ gateEntry=gateEntry.slice(0,-1); gateDots(); return; }
+  if(!k||gateEntry.length>=GATE_LEN) return;
+  gateEntry+=k; gateDots();
+  if(gateEntry.length===GATE_LEN){
+    if(await sha256hex("tsy:"+gateEntry)===GATE_HASH){
+      GATE_PIN=gateEntry; gateEntry="";
+      document.getElementById("gate").style.display="none";
+      tryAutoUnlock();
+    }else{
+      const d=document.getElementById("gateDots");
+      d.classList.add("err");
+      setTimeout(()=>{d.classList.remove("err");gateEntry="";gateDots();},350);
+    }
+  }
+}
+async function tryAutoUnlock(){
+  if(!SYNC&&syncConfigured()){
+    try{
+      const cfg=JSON.parse(localStorage.getItem(SYNC_KEY));
+      SYNC={token:await decTok(cfg.enc,GATE_PIN),gistId:cfg.gistId};
+      renderBanner();
+    }catch(e){} // Token war mit anderer PIN verschlüsselt → manuelles Entsperren im Verlauf möglich
+  }
+  initCloud();
+}
+window.addEventListener("keydown",e=>{
+  if(document.getElementById("gate").style.display==="none")return;
+  if(/^[0-9]$/.test(e.key)) gateKey(e.key);
+  if(e.key==="Backspace") gateKey("⌫");
+});
 
 renderDash();
 renderBanner();
-initCloud();
+renderSyncPanel();
+gateDots();gatePad();
 </script>
 </body>
 </html>

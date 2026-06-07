@@ -409,6 +409,14 @@ function lineChart(points, opts={}){
       if(i>0) grid+=`<line x1="${X(i)}" y1="${P.t}" x2="${X(i)}" y2="${H-P.b}" stroke="#33373D" stroke-width="1" stroke-dasharray="3 4"/>`;
     }
   });
+  // Lauf-Bänder: Zeitraum Start→Ende dezent hinterlegen
+  let bands="";
+  (opts.bands||[]).forEach(b=>{
+    const i1=points.findIndex(p=>p.k===b.from), i2=points.findIndex(p=>p.k===b.to);
+    if(i1<0||i2<0) return;
+    const x1=Math.max(X(i1)-8,P.l-4), x2=Math.min(X(i2)+8,W-P.r+4);
+    bands+=`<rect x="${x1.toFixed(1)}" y="${P.t}" width="${(x2-x1).toFixed(1)}" height="${H-P.t-P.b}" rx="7" fill="#FFFFFF" opacity="0.05"/>`;
+  });
   const path=points.map((p,i)=>`${i?"L":"M"}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`).join(" ");
   const area=path+`L${X(points.length-1)},${Y(ymin)}L${X(0)},${Y(ymin)}Z`;
   const best=ys.indexOf(Math.max(...ys));
@@ -426,7 +434,7 @@ function lineChart(points, opts={}){
       <stop offset="0" stop-color="${col}" stop-opacity="0.25"/>
       <stop offset="1" stop-color="${col}" stop-opacity="0"/>
     </linearGradient></defs>
-    ${grid}${labels}
+    ${bands}${grid}${labels}
     <path d="${area}" fill="url(#${uid})"/>
     <path d="${path}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>
     ${dots}${hits}
@@ -494,8 +502,9 @@ function renderDash(){
     <div class="card"><div class="label">Letztes Workout</div><div class="value">${last?relDays(last.date):"–"}</div><div class="sub">${last?fmt(lastVol)+" kg · "+wReps(last)+" Wdh."+(isPR?" · Bestwert!":""):""}</div></div>
     <div class="card"><div class="label">Bestes Volumen</div><div class="value">${fmt(best)} kg</div><div class="sub">pro Workout</div></div>
     <div class="card"><div class="label">Trend</div><div class="value" style="color:${delta>=0?"var(--green)":"var(--accent2)"}">${delta===null?"–":arrow+(delta>=0?"+":"")+delta+" %"}</div><div class="sub">vs. vorheriges Workout</div></div>`;
+  const runBands=getRuns().filter(r=>r.e).map(r=>({from:wid(r.s),to:wid(r.e)}));
   document.getElementById("chartTotal").innerHTML =
-    lineChart(DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeIcon(w.t):"")+" · "+wReps(w)+" Wdh.",y:wVol(w)})));
+    lineChart(DATA.map(w=>({k:wid(w),x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeIcon(w.t):"")+" · "+wReps(w)+" Wdh.",y:wVol(w)})),{bands:runBands});
   renderRuns();
   renderChips();
   renderExChart();
@@ -586,8 +595,9 @@ function renderChips(){
 function selEx(nr){ EXSEL=nr; renderChips(); renderExChart(); }
 function renderExChart(){
   const nr=EXSEL;
-  const pts=DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+" · "+exReps(w,nr)+" Wdh.",y:exVol(w,nr)})).filter(p=>p.y>0);
-  document.getElementById("chartEx").innerHTML=lineChart(pts,{color:"#FFFFFF"});
+  const pts=DATA.map(w=>({k:wid(w),x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+" · "+exReps(w,nr)+" Wdh.",y:exVol(w,nr)})).filter(p=>p.y>0);
+  const runBands=getRuns().filter(r=>r.e).map(r=>({from:wid(r.s),to:wid(r.e)}));
+  document.getElementById("chartEx").innerHTML=lineChart(pts,{color:"#FFFFFF",bands:runBands});
   const all=DATA.flatMap(w=>w.sets.filter(s=>s.nr===nr));
   if(all.length){
     const lastW=[...DATA].reverse().find(w=>w.sets.some(s=>s.nr===nr));

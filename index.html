@@ -497,7 +497,9 @@ function renderLog(){
     return;
   }
   const d=document.getElementById("logDate");
-  if(!d.value) d.value=new Date().toISOString().slice(0,10);
+  const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  d.value=today;   // Standard ist immer heute
+  d.max=today;     // Zukunft nicht anwählbar
   const w=loadWeights();
   ["heavy","light","body"].forEach(c=>document.getElementById("wg-"+c).value=w[c]);
   document.getElementById("logSetup").style.display="";
@@ -515,6 +517,8 @@ function stepW(cat,dir){
 function startWizard(){
   const date=document.getElementById("logDate").value;
   if(!date){toast("Bitte Datum wählen");return;}
+  const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  if(date>today){toast("Datum liegt in der Zukunft");return;}
   WEIGHTS={heavy:+document.getElementById("wg-heavy").value||CATS.heavy.def,
            light:+document.getElementById("wg-light").value||CATS.light.def,
            body:+document.getElementById("wg-body").value||CATS.body.def};

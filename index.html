@@ -468,8 +468,6 @@ function renderWiz(){
     </div>
     <div class="nextup">${nxt?"Als Nächstes: "+nxt.ex+" · Satz "+(nxt.set+1):"Letzter Satz – gleich geschafft!"}</div>
   </div>`;
-  const inp=document.getElementById("repIn");
-  inp.focus();inp.select();
   updDelta();
   if(WIZ.i>0) startRestTick(); else clearInterval(restIv);
 }

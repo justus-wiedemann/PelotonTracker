@@ -226,8 +226,8 @@ svg text{font-family:inherit}
         <div class="field"><label>Datum</label><input type="date" id="logDate"></div>
         <div class="field" style="margin-bottom:0"><label>Log-Typ</label>
           <div class="seg">
-            <button id="seg-S" onclick="setLogType('S')">Programm-Start</button>
-            <button id="seg-E" onclick="setLogType('E')">Programm-Ende</button>
+            <button id="seg-S" onclick="setLogType('S')">▶&nbsp;Start</button>
+            <button id="seg-E" onclick="setLogType('E')">■&nbsp;Ende</button>
           </div>
         </div>
       </div>
@@ -286,6 +286,7 @@ const TORD={S:0,E:1};
 function cmpW(a,b){ return a.date.localeCompare(b.date) || ((TORD[a.t]??0)-(TORD[b.t]??0)); }
 function wid(w){ return w.date+"|"+(w.t||""); }
 function typeLabel(t){ return t==="S"?"Start":t==="E"?"Ende":""; }
+function typeIcon(t){ return t==="S"?"▶":t==="E"?"■":""; }
 /* Alle Daten von außen (Import, Cloud, localStorage) strikt validieren und normalisieren */
 function cleanData(d){
   if(!Array.isArray(d)) throw new Error("Ungültiges Format");
@@ -476,7 +477,7 @@ function renderDash(){
     <div class="card"><div class="label">Bestes Volumen</div><div class="value">${fmt(best)} kg</div><div class="sub">pro Workout</div></div>
     <div class="card"><div class="label">Trend</div><div class="value" style="color:${delta>=0?"var(--green)":"var(--accent2)"}">${delta===null?"–":arrow+(delta>=0?"+":"")+delta+" %"}</div><div class="sub">vs. vorheriges Workout</div></div>`;
   document.getElementById("chartTotal").innerHTML =
-    lineChart(DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeLabel(w.t):""),y:wVol(w)})));
+    lineChart(DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeIcon(w.t):""),y:wVol(w)})));
   renderRuns();
   renderChips();
   renderExChart();
@@ -723,9 +724,9 @@ function renderSummary(){
   const prev=[...DATA].filter(x=>wid(x)!==WIZ.edit&&cmpW(x,cur)<0).pop();
   const pv=prev?wVol(prev):null;
   const pct=pv?Math.round((total-pv)/pv*100):null;
-  const dchip=pct===null?"":`<span class="hdelta ${pct>=0?"up":"down"}">${pct>=0?"▲ +":"▼ "}${pct} % vs. ${fmtDate(prev.date)}${prev.t?" ("+typeLabel(prev.t)+")":""}</span>`;
+  const dchip=pct===null?"":`<span class="hdelta ${pct>=0?"up":"down"}">${pct>=0?"▲ +":"▼ "}${pct} % vs. ${fmtDate(prev.date)}${prev.t?" "+typeIcon(prev.t):""}</span>`;
   el.innerHTML=`<div class="panel">
-    <h2>Zusammenfassung · ${fmtDate(date)} · ${WIZ.type==="E"?"Programm-Ende":"Programm-Start"}</h2>
+    <h2>Zusammenfassung · ${fmtDate(date)} · ${typeIcon(WIZ.type)} ${typeLabel(WIZ.type)}</h2>
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-family:var(--display);font-size:26px;font-weight:800;color:var(--accent2)">${fmt(total)} kg</span>${dchip}
     </div>
@@ -779,7 +780,7 @@ function renderHist(){
     }).join("");
     return `<div class="hist-item">
       <div class="hist-head" onclick="this.parentElement.classList.toggle('open')">
-        <span class="d">${wd}, ${fmtDate(w.date)}${w.t?`<span class="tbadge">${typeLabel(w.t)}</span>`:""}${v===best?'<span class="pr">Bestwert</span>':""}</span>
+        <span class="d">${wd}, ${fmtDate(w.date)}${w.t?`<span class="tbadge" title="${typeLabel(w.t)}">${typeIcon(w.t)}</span>`:""}${v===best?'<span class="pr">Bestwert</span>':""}</span>
         <span style="display:flex;align-items:center;gap:8px">${dchip}<span class="v">${fmt(v)} kg</span></span>
       </div>
       <div class="hist-body">

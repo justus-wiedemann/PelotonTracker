@@ -287,7 +287,7 @@ const EXERCISES = [
 ];
 const KEY = "tsy-workouts-v1";
 
-function sig(d){ return d.length ? d[d.length-1].date+"|"+String(d.length).padStart(4,"0") : "0"; }
+function sig(d){ return d.length ? d[d.length-1].date+"|"+String(d.length).padStart(4,"0")+"|"+String(d.filter(x=>x.ab).length).padStart(3,"0") : "0"; }
 /* Log-Typ: S = Programm-Start, E = Programm-Ende (zwei Logs pro Tag möglich) */
 const TORD={S:0,E:1};
 function cmpW(a,b){ return a.date.localeCompare(b.date) || ((TORD[a.t]??0)-(TORD[b.t]??0)); }
@@ -302,7 +302,7 @@ function cleanData(d){
     if(!w||typeof w.date!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(w.date)||!Array.isArray(w.sets))
       throw new Error("Ungültiges Format");
     const t=(w.t==="S"||w.t==="E")?w.t:undefined;
-    return {date:w.date, ...(t?{t}:{}), sets:w.sets.map(s=>{
+    return {date:w.date, ...(t?{t}:{}), ...(w.ab?{ab:1}:{}), sets:w.sets.map(s=>{
       const nr=+s.nr, reps=+s.reps, wt=+s.wt;
       if(!byNr[nr]||!isFinite(reps)||reps<0||reps>999||!isFinite(wt)||wt<0||wt>999)
         throw new Error("Ungültiges Format");
@@ -490,6 +490,14 @@ function renderDash(){
   renderChips();
   renderExChart();
 }
+function abortRun(id){
+  const w=DATA.find(x=>wid(x)===id);
+  if(!w) return;
+  if(!confirm("Diesen Lauf wirklich abbrechen? Der nächste Log startet dann einen neuen Lauf.")) return;
+  w.ab=1;
+  persist();syncAfterChange();renderDash();
+  toast("Lauf abgebrochen");
+}
 /* Programm-Durchläufe: Start-Log + zugehöriges Ende-Log */
 function getRuns(){
   const runs=[];
@@ -520,11 +528,21 @@ function renderRuns(){
   el.innerHTML=summary+runs.map((r,i)=>{
     const sv=wVol(r.s);
     if(!r.e){
-      const active=i===runs.length-1; // nur der neueste offene Lauf ist aktiv
-      return `<div class="hist-item"><div class="hist-head run-head" style="cursor:default${active?"":";opacity:.5"}">
-        <span><span class="d">Lauf ${i+1}</span><span class="runsub">${active?"seit ":""}${fmtDateS(r.s.date)}</span></span>
-        <span class="runright">${active?`<span class="hdelta up">läuft</span><span class="runvol">${fmt(sv)} kg</span>`:`<span class="runsub" style="margin:0">abgebrochen</span>`}</span>
-      </div></div>`;
+      const active=i===runs.length-1&&!r.s.ab; // nur der neueste offene, nicht abgebrochene Lauf ist aktiv
+      if(!active){
+        return `<div class="hist-item"><div class="hist-head run-head" style="cursor:default;opacity:.5">
+          <span><span class="d">Lauf ${i+1}</span><span class="runsub">${fmtDateS(r.s.date)}</span></span>
+          <span class="runright"><span class="runsub" style="margin:0">abgebrochen</span></span>
+        </div></div>`;
+      }
+      return `<div class="hist-item">
+        <div class="hist-head run-head" onclick="this.parentElement.classList.toggle('open')">
+          <span><span class="d">Lauf ${i+1}</span><span class="runsub">seit ${fmtDateS(r.s.date)}</span></span>
+          <span class="runright"><span class="hdelta up">läuft</span><span class="runvol">${fmt(sv)} kg</span><span class="chev">›</span></span>
+        </div>
+        <div class="hist-body">
+          <button class="del" onclick="abortRun('${wid(r.s)}')">Lauf abbrechen</button>
+        </div></div>`;
     }
     const ev=wVol(r.e);
     const pct=Math.round((ev-sv)/sv*100);
@@ -610,7 +628,7 @@ function renderLog(){
   // Typ-Vorschlag: nach einem Start folgt ein Ende, sonst Start.
   // Ende ist nur erlaubt, wenn ein offener Start existiert (Ende nach Ende ergibt keinen Sinn).
   const lastTyped=[...DATA].reverse().find(x=>x.t);
-  const endeOk=!!lastTyped&&lastTyped.t==="S";
+  const endeOk=!!lastTyped&&lastTyped.t==="S"&&!lastTyped.ab;
   document.getElementById("seg-E").classList.toggle("disabled",!endeOk);
   setLogType(endeOk?"E":"S");
   const w=loadWeights();
@@ -641,9 +659,9 @@ function startWizard(){
   if(!date){toast("Bitte Datum wählen");return;}
   const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
   if(date>today){toast("Datum liegt in der Zukunft");return;}
-  if(LOGTYPE==="E"){ // Ende braucht direkt davor einen Start
+  if(LOGTYPE==="E"){ // Ende braucht direkt davor einen offenen (nicht abgebrochenen) Start
     const prev=[...DATA].filter(x=>cmpW(x,{date,t:"E"})<0).pop();
-    if(!prev||prev.t==="E"){toast("Ende nach Ende ist nicht möglich – zuerst einen Start loggen");return;}
+    if(!prev||prev.t==="E"||prev.ab){toast("Kein offener Lauf – zuerst einen Start loggen");return;}
   }
   WEIGHTS={heavy:+document.getElementById("wg-heavy").value||CATS.heavy.def,
            light:+document.getElementById("wg-light").value||CATS.light.def,

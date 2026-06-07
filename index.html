@@ -21,6 +21,7 @@
   --display:"George","Inter",-apple-system,BlinkMacSystemFont,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+html{touch-action:manipulation} /* Doppeltipp-Zoom global aus, Scrollen bleibt */
 button{touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 body{background:var(--bg);color:var(--text);font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding-bottom:40px}
 .wrap{max-width:760px;margin:0 auto;padding:16px}
@@ -187,15 +188,15 @@ svg text{font-family:inherit}
         <h2>Gewichte für heute <small>(kg)</small></h2>
         <div class="wrow">
           <div><div class="wname">Schwer</div><div class="wsub">RDL · Reverse Lunge · Squat</div></div>
-          <div class="stepper"><button onclick="stepW('heavy',-1)">−</button><input id="wg-heavy" type="number" inputmode="decimal" step="0.5"><button onclick="stepW('heavy',1)">+</button></div>
+          <div class="stepper"><button onpointerdown="event.preventDefault();stepW('heavy',-1)">−</button><input id="wg-heavy" type="number" inputmode="decimal" step="0.5"><button onpointerdown="event.preventDefault();stepW('heavy',1)">+</button></div>
         </div>
         <div class="wrow">
           <div><div class="wname">Leicht</div><div class="wsub">Push Press · Row · Renegade · Roll up</div></div>
-          <div class="stepper"><button onclick="stepW('light',-1)">−</button><input id="wg-light" type="number" inputmode="decimal" step="0.5"><button onclick="stepW('light',1)">+</button></div>
+          <div class="stepper"><button onpointerdown="event.preventDefault();stepW('light',-1)">−</button><input id="wg-light" type="number" inputmode="decimal" step="0.5"><button onpointerdown="event.preventDefault();stepW('light',1)">+</button></div>
         </div>
         <div class="wrow">
           <div><div class="wname">Körpergewicht</div><div class="wsub">Push Up · Plank Pike Reach</div></div>
-          <div class="stepper"><button onclick="stepW('body',-1)">−</button><input id="wg-body" type="number" inputmode="decimal" step="0.5"><button onclick="stepW('body',1)">+</button></div>
+          <div class="stepper"><button onpointerdown="event.preventDefault();stepW('body',-1)">−</button><input id="wg-body" type="number" inputmode="decimal" step="0.5"><button onpointerdown="event.preventDefault();stepW('body',1)">+</button></div>
         </div>
       </div>
       <button class="btn" onclick="startWizard()">Workout starten</button>
@@ -486,10 +487,10 @@ function renderWiz(){
     <div class="meta">${CATS[cat].label} · ${fmtW(WEIGHTS[cat])} kg · Satz ${s.set+1}/2</div>
     <div class="lastrep">${s.lastReps!==null?"Letztes Mal: "+s.lastReps+" Wdh.":"Noch keine Daten"}</div>
     <div class="repctl">
-      <button onclick="stepRep(-1)">−</button>
+      <button onpointerdown="event.preventDefault();stepRep(-1)">−</button>
       <input id="repIn" type="number" inputmode="numeric" min="0" value="${s.reps}"
         oninput="updDelta()" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault();wizNext();}">
-      <button onclick="stepRep(1)">+</button>
+      <button onpointerdown="event.preventDefault();stepRep(1)">+</button>
     </div>
     <div class="repdelta" id="repDelta"></div>
     <button class="btn" onclick="wizNext()">${WIZ.i===WIZ.steps.length-1?"Fertig ✓":"Weiter →"}</button>

@@ -323,10 +323,15 @@ function lineChart(points, opts={}){
     grid+=`<line x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}" stroke="#33373D" stroke-width="1"/>`;
     labels+=`<text x="${P.l-6}" y="${y+4}" fill="#9BA0A8" font-size="${FS}" text-anchor="end">${fmt(Math.round(v))}</text>`;
   }
-  const step=Math.ceil(points.length/(mob?5:7));
+  // X-Achse: nur Jahre, einmal pro Jahres-Abschnitt, mit Trennlinie beim Wechsel
+  let lastYear="";
   points.forEach((p,i)=>{
-    if(i%step===0||i===points.length-1)
-      labels+=`<text x="${X(i)}" y="${H-8}" fill="#9BA0A8" font-size="${FS}" text-anchor="middle">${p.x}</text>`;
+    const yr=(p.f||p.x).slice(-4);
+    if(yr!==lastYear){
+      lastYear=yr;
+      labels+=`<text x="${X(i)}" y="${H-8}" fill="#9BA0A8" font-size="${FS}" text-anchor="${i===0?"start":"middle"}">${yr}</text>`;
+      if(i>0) grid+=`<line x1="${X(i)}" y1="${P.t}" x2="${X(i)}" y2="${H-P.b}" stroke="#33373D" stroke-width="1" stroke-dasharray="3 4"/>`;
+    }
   });
   const path=points.map((p,i)=>`${i?"L":"M"}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`).join(" ");
   const area=path+`L${X(points.length-1)},${Y(ymin)}L${X(0)},${Y(ymin)}Z`;

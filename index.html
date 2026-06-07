@@ -66,6 +66,7 @@ input[type=date]{width:auto;min-width:150px;max-width:190px;display:block;-webki
 .seg{display:flex;gap:4px;background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:4px}
 .seg button{flex:1;padding:10px 6px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
 .seg button.active{background:var(--accent);color:#fff}
+.seg button.disabled{opacity:.35}
 .tbadge{display:inline-block;background:var(--card2);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:6px}
 svg text{font-family:inherit}
 .btn{display:block;width:100%;padding:15px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-family:var(--display);font-size:14px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;margin-top:6px}
@@ -596,9 +597,12 @@ function renderLog(){
   const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
   d.value=today;   // Standard ist immer heute
   d.max=today;     // Zukunft nicht anwählbar
-  // Typ-Vorschlag: nach einem Start folgt ein Ende, sonst Start
+  // Typ-Vorschlag: nach einem Start folgt ein Ende, sonst Start.
+  // Ende ist nur erlaubt, wenn ein offener Start existiert (Ende nach Ende ergibt keinen Sinn).
   const lastTyped=[...DATA].reverse().find(x=>x.t);
-  setLogType(lastTyped&&lastTyped.t==="S"?"E":"S");
+  const endeOk=!!lastTyped&&lastTyped.t==="S";
+  document.getElementById("seg-E").classList.toggle("disabled",!endeOk);
+  setLogType(endeOk?"E":"S");
   const w=loadWeights();
   ["heavy","light","body"].forEach(c=>document.getElementById("wg-"+c).value=w[c]);
   document.getElementById("logSetup").style.display="";
@@ -615,6 +619,10 @@ function stepW(cat,dir){
 }
 let LOGTYPE="S";
 function setLogType(t){
+  if(t==="E"&&document.getElementById("seg-E").classList.contains("disabled")){
+    toast("Kein offener Lauf – zuerst einen Start loggen");
+    t="S";
+  }
   LOGTYPE=t;
   ["S","E"].forEach(x=>document.getElementById("seg-"+x).classList.toggle("active",x===t));
 }
@@ -623,6 +631,10 @@ function startWizard(){
   if(!date){toast("Bitte Datum wählen");return;}
   const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
   if(date>today){toast("Datum liegt in der Zukunft");return;}
+  if(LOGTYPE==="E"){ // Ende braucht direkt davor einen Start
+    const prev=[...DATA].filter(x=>cmpW(x,{date,t:"E"})<0).pop();
+    if(!prev||prev.t==="E"){toast("Ende nach Ende ist nicht möglich – zuerst einen Start loggen");return;}
+  }
   WEIGHTS={heavy:+document.getElementById("wg-heavy").value||CATS.heavy.def,
            light:+document.getElementById("wg-light").value||CATS.light.def,
            body:+document.getElementById("wg-body").value||CATS.body.def};

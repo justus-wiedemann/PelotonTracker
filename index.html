@@ -63,6 +63,10 @@ nav#tabbar button.active{color:var(--accent)}
 .panel h2 small{color:var(--muted);font-weight:400;font-size:11px;letter-spacing:.5px}
 select,input[type=date],input[type=password]{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:16px;width:100%}
 input[type=date]{width:auto;min-width:150px;max-width:190px;display:block;-webkit-appearance:none}
+.seg{display:flex;gap:4px;background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:4px}
+.seg button{flex:1;padding:10px 6px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
+.seg button.active{background:var(--accent);color:#fff}
+.tbadge{display:inline-block;background:var(--card2);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:6px}
 svg text{font-family:inherit}
 .btn{display:block;width:100%;padding:15px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-family:var(--display);font-size:14px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;margin-top:6px}
 .btn:active{transform:scale(.99)}
@@ -216,6 +220,12 @@ svg text{font-family:inherit}
     <div id="logSetup">
       <div class="panel">
         <div class="field"><label>Datum</label><input type="date" id="logDate"></div>
+        <div class="field" style="margin-bottom:0"><label>Log-Typ</label>
+          <div class="seg">
+            <button id="seg-S" onclick="setLogType('S')">Programm-Start</button>
+            <button id="seg-E" onclick="setLogType('E')">Programm-Ende</button>
+          </div>
+        </div>
       </div>
       <div class="panel">
         <h2>Gewichte für heute <small>(kg)</small></h2>
@@ -267,6 +277,11 @@ const EXERCISES = [
 const KEY = "tsy-workouts-v1";
 
 function sig(d){ return d.length ? d[d.length-1].date+"|"+String(d.length).padStart(4,"0") : "0"; }
+/* Log-Typ: S = Programm-Start, E = Programm-Ende (zwei Logs pro Tag möglich) */
+const TORD={S:0,E:1};
+function cmpW(a,b){ return a.date.localeCompare(b.date) || ((TORD[a.t]??0)-(TORD[b.t]??0)); }
+function wid(w){ return w.date+"|"+(w.t||""); }
+function typeLabel(t){ return t==="S"?"Start":t==="E"?"Ende":""; }
 /* Alle Daten von außen (Import, Cloud, localStorage) strikt validieren und normalisieren */
 function cleanData(d){
   if(!Array.isArray(d)) throw new Error("Ungültiges Format");
@@ -274,14 +289,15 @@ function cleanData(d){
   const out=d.map(w=>{
     if(!w||typeof w.date!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(w.date)||!Array.isArray(w.sets))
       throw new Error("Ungültiges Format");
-    return {date:w.date, sets:w.sets.map(s=>{
+    const t=(w.t==="S"||w.t==="E")?w.t:undefined;
+    return {date:w.date, ...(t?{t}:{}), sets:w.sets.map(s=>{
       const nr=+s.nr, reps=+s.reps, wt=+s.wt;
       if(!byNr[nr]||!isFinite(reps)||reps<0||reps>999||!isFinite(wt)||wt<0||wt>999)
         throw new Error("Ungültiges Format");
       return {nr,ex:byNr[nr],reps,wt};
     })};
   });
-  out.sort((a,b)=>a.date.localeCompare(b.date));
+  out.sort(cmpW);
   return out;
 }
 function load(){
@@ -343,7 +359,7 @@ function lineChart(points, opts={}){
   // X-Achse: nur Jahre, einmal pro Jahres-Abschnitt, mit Trennlinie beim Wechsel
   let lastYear="";
   points.forEach((p,i)=>{
-    const yr=(p.f||p.x).slice(-4);
+    const yr=(((p.f||p.x).match(/\d{4}/))||[""])[0];
     if(yr!==lastYear){
       lastYear=yr;
       // am rechten Rand nach links ankern, damit das Label nicht abgeschnitten wird
@@ -438,7 +454,7 @@ function renderDash(){
     <div class="card"><div class="label">Bestes Volumen</div><div class="value">${fmt(best)} kg</div><div class="sub">pro Workout</div></div>
     <div class="card"><div class="label">Trend</div><div class="value" style="color:${delta>=0?"var(--green)":"var(--accent2)"}">${delta===null?"–":arrow+(delta>=0?"+":"")+delta+" %"}</div><div class="sub">vs. vorheriges Workout</div></div>`;
   document.getElementById("chartTotal").innerHTML =
-    lineChart(DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date),y:wVol(w)})));
+    lineChart(DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeLabel(w.t):""),y:wVol(w)})));
   renderChips();
   renderExChart();
 }
@@ -500,6 +516,9 @@ function renderLog(){
   const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
   d.value=today;   // Standard ist immer heute
   d.max=today;     // Zukunft nicht anwählbar
+  // Typ-Vorschlag: nach einem Start folgt ein Ende, sonst Start
+  const lastTyped=[...DATA].reverse().find(x=>x.t);
+  setLogType(lastTyped&&lastTyped.t==="S"?"E":"S");
   const w=loadWeights();
   ["heavy","light","body"].forEach(c=>document.getElementById("wg-"+c).value=w[c]);
   document.getElementById("logSetup").style.display="";
@@ -513,6 +532,11 @@ function discardWiz(){
 function stepW(cat,dir){
   const el=document.getElementById("wg-"+cat);
   el.value=Math.max(0,(+el.value||0)+dir*0.5);
+}
+let LOGTYPE="S";
+function setLogType(t){
+  LOGTYPE=t;
+  ["S","E"].forEach(x=>document.getElementById("seg-"+x).classList.toggle("active",x===t));
 }
 function startWizard(){
   const date=document.getElementById("logDate").value;
@@ -531,7 +555,7 @@ function startWizard(){
       steps.push({nr:e.nr,ex:e.ex,set:i,reps:p?p.reps:10,lastReps:p?p.reps:null});
     });
   });
-  WIZ={steps,i:0,lastT:Date.now()};
+  WIZ={steps,i:0,lastT:Date.now(),type:LOGTYPE};
   document.getElementById("logSetup").style.display="none";
   document.getElementById("logWizard").style.display="";
   renderWiz();
@@ -617,12 +641,13 @@ function renderSummary(){
       <td class="num">${s.reps||"–"} Wdh.</td>
       <td class="num">${s.reps?fmt(v)+" kg":""}</td></tr>`;
   }).join("");
-  const prev=[...DATA].filter(x=>x.date<date).pop();
+  const cur={date,t:WIZ.type};
+  const prev=[...DATA].filter(x=>wid(x)!==WIZ.edit&&cmpW(x,cur)<0).pop();
   const pv=prev?wVol(prev):null;
   const pct=pv?Math.round((total-pv)/pv*100):null;
-  const dchip=pct===null?"":`<span class="hdelta ${pct>=0?"up":"down"}">${pct>=0?"▲ +":"▼ "}${pct} % vs. ${fmtDate(prev.date)}</span>`;
+  const dchip=pct===null?"":`<span class="hdelta ${pct>=0?"up":"down"}">${pct>=0?"▲ +":"▼ "}${pct} % vs. ${fmtDate(prev.date)}${prev.t?" ("+typeLabel(prev.t)+")":""}</span>`;
   el.innerHTML=`<div class="panel">
-    <h2>Zusammenfassung · ${fmtDate(date)}</h2>
+    <h2>Zusammenfassung · ${fmtDate(date)} · ${WIZ.type==="E"?"Programm-Ende":"Programm-Start"}</h2>
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-family:var(--display);font-size:26px;font-weight:800;color:var(--accent2)">${fmt(total)} kg</span>${dchip}
     </div>
@@ -640,12 +665,14 @@ function saveWorkout(){
     if(s.reps>0) sets.push({nr:s.nr,ex:s.ex,reps:s.reps,wt:WEIGHTS[exCat(s.nr)]});
   });
   if(!sets.length){toast("Keine Sätze eingetragen");return;}
-  const ix=DATA.findIndex(x=>x.date===date);
+  const t=WIZ.type||"S";
+  const w={date,t,sets};
+  const ix=DATA.findIndex(x=>wid(x)===wid(w));
   if(ix>=0){
-    if(WIZ.edit!==date && !confirm("Für dieses Datum existiert schon ein Workout. Überschreiben?")) return;
-    DATA[ix]={date,sets};
-  } else DATA.push({date,sets});
-  DATA.sort((a,b)=>a.date.localeCompare(b.date));
+    if(WIZ.edit!==wid(w) && !confirm(`Für diesen Tag existiert schon ein ${typeLabel(t)}-Log. Überschreiben?`)) return;
+    DATA[ix]=w;
+  } else DATA.push(w);
+  DATA.sort(cmpW);
   persist();
   syncAfterChange();
   WIZ=null; clearInterval(restIv);
@@ -674,22 +701,22 @@ function renderHist(){
     }).join("");
     return `<div class="hist-item">
       <div class="hist-head" onclick="this.parentElement.classList.toggle('open')">
-        <span class="d">${wd}, ${fmtDate(w.date)}${v===best?'<span class="pr">Bestwert</span>':""}</span>
+        <span class="d">${wd}, ${fmtDate(w.date)}${w.t?`<span class="tbadge">${typeLabel(w.t)}</span>`:""}${v===best?'<span class="pr">Bestwert</span>':""}</span>
         <span style="display:flex;align-items:center;gap:8px">${dchip}<span class="v">${fmt(v)} kg</span></span>
       </div>
       <div class="hist-body">
         <table><tr><th>Übung</th><th class="num">Sätze</th><th class="num">Volumen kg</th></tr>${rows}</table>
         <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="del neutral" onclick="editWorkout('${w.date}')">Bearbeiten</button>
-          <button class="del" onclick="delWorkout('${w.date}')">Löschen</button>
+          <button class="del neutral" onclick="editWorkout('${wid(w)}')">Bearbeiten</button>
+          <button class="del" onclick="delWorkout('${wid(w)}')">Löschen</button>
         </div>
       </div></div>`;
   }).reverse().join("");
 }
-function editWorkout(date){
-  const w=DATA.find(x=>x.date===date);
+function editWorkout(id){
+  const w=DATA.find(x=>wid(x)===id);
   if(!w) return;
-  document.getElementById("logDate").value=date;
+  document.getElementById("logDate").value=w.date;
   const wt={...loadWeights()};
   Object.keys(CATS).forEach(c=>{
     const s=w.sets.find(x=>CATS[c].nrs.includes(x.nr));
@@ -706,12 +733,14 @@ function editWorkout(date){
       steps.push({nr:e.nr,ex:e.ex,set:i,reps:cur[i]?cur[i].reps:0,lastReps:ps[i]?ps[i].reps:(ps[0]?ps[0].reps:null)});
     });
   });
-  WIZ={steps,i:steps.length,lastT:Date.now(),edit:date};
+  WIZ={steps,i:steps.length,lastT:Date.now(),edit:id,type:w.t||"S"};
   show("log");
 }
-function delWorkout(date){
-  if(!confirm(`Workout vom ${fmtDate(date)} wirklich löschen?`))return;
-  DATA=DATA.filter(w=>w.date!==date);
+function delWorkout(id){
+  const w=DATA.find(x=>wid(x)===id);
+  if(!w) return;
+  if(!confirm(`${typeLabel(w.t)||"Workout"}-Log vom ${fmtDate(w.date)} wirklich löschen?`))return;
+  DATA=DATA.filter(x=>wid(x)!==id);
   persist();syncAfterChange();renderHist();toast("Gelöscht");
 }
 

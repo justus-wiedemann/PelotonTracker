@@ -410,8 +410,7 @@ function lineChart(points, opts={}){
     if(i===best&&points.length>1)
       dots+=`<circle cx="${cx}" cy="${cy}" r="${mob?8.5:7.5}" fill="none" stroke="#3ddc84" stroke-width="2"/>`;
     dots+=`<circle cx="${cx}" cy="${cy}" r="${mob?4.5:3.5}" fill="${col}"/>`;
-    const lbl=`${p.f||p.x}: ${fmt(p.y)} kg${i===best&&points.length>1?" · Bestwert":""}`;
-    hits+=`<circle cx="${cx}" cy="${cy}" r="16" fill="transparent" style="cursor:pointer" data-x="${cx}" data-y="${cy}" data-l="${lbl}" onclick="chartTip(this)" onmouseenter="chartTip(this)" onmouseleave="chartTipHide(this)"/>`;
+    hits+=`<circle cx="${cx}" cy="${cy}" r="16" fill="transparent" style="cursor:pointer" data-x="${cx}" data-y="${cy}" data-v="${fmt(p.y)} kg" data-d="${p.f||p.x}" data-b="${i===best&&points.length>1?1:0}" onclick="chartTip(this)" onmouseenter="chartTip(this)" onmouseleave="chartTipHide(this)"/>`;
   });
   const uid="cg"+(++CHART_UID);
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
@@ -424,8 +423,9 @@ function lineChart(points, opts={}){
     <path d="${path}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>
     ${dots}${hits}
     <g class="ttg" style="display:none;pointer-events:none">
-      <rect height="${mob?29:26}" rx="7" fill="#2A2D32" stroke="#33373D"/>
-      <text y="${mob?19:17}" fill="#FFFFFF" font-size="${FST}" font-weight="600" text-anchor="middle"></text>
+      <rect height="${mob?46:42}" rx="9" fill="#2A2D32" stroke="#33373D"/>
+      <text class="tt1" y="${mob?20:18}" fill="#FFFFFF" font-size="${mob?15:13.5}" font-weight="800" text-anchor="middle"></text>
+      <text class="tt2" y="${mob?37:34}" fill="#9BA0A8" font-size="${mob?11:10.5}" text-anchor="middle"></text>
     </g></svg>`;
 }
 function chartTipHide(el){
@@ -434,17 +434,19 @@ function chartTipHide(el){
 function chartTip(el){
   const svg=el.ownerSVGElement;
   const g=svg.querySelector(".ttg");
-  const lbl=el.dataset.l;
-  g.dataset.cur=lbl;
-  const W=svg.viewBox.baseVal.width;
-  const mob=W<500;
+  const W=svg.viewBox.baseVal.width, mob=W<500;
   const x=+el.dataset.x, y=+el.dataset.y;
-  const wdt=lbl.length*(mob?7.3:6.6)+18;
+  const v=el.dataset.v, dt=el.dataset.d, best=el.dataset.b==="1";
+  const t1=g.querySelector(".tt1"), t2=g.querySelector(".tt2");
+  t1.textContent=v;
+  t2.innerHTML=dt+(best?'<tspan fill="#3ddc84" font-weight="700"> · Bestwert</tspan>':"");
+  const f1=mob?15:13.5, f2=mob?11:10.5;
+  const wdt=Math.max(v.length*f1*0.62, (dt.length+(best?11:0))*f2*0.6)+22;
+  const hgt=mob?46:42;
   g.querySelector("rect").setAttribute("width",wdt);
-  const txt=g.querySelector("text");
-  txt.textContent=lbl; txt.setAttribute("x",wdt/2);
+  t1.setAttribute("x",wdt/2); t2.setAttribute("x",wdt/2);
   const tx=Math.min(Math.max(x-wdt/2,4),W-wdt-4);
-  const ty=y-(mob?44:40)<4?y+18:y-(mob?44:40);
+  const ty=y-hgt-12<4?y+18:y-hgt-12;
   g.setAttribute("transform",`translate(${tx},${ty})`);
   g.style.display="block";
 }

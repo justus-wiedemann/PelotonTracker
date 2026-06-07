@@ -73,6 +73,7 @@ input[type=date]{width:auto;min-width:150px;max-width:190px;display:block;-webki
 .runright{display:flex;align-items:center;gap:9px;flex-shrink:0}
 .runvol{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap}
 .chev{color:var(--muted);font-size:17px;transition:transform .15s}
+.cellsub{color:var(--muted);font-size:10.5px;margin-top:1px}
 .hist-item.open .chev{transform:rotate(90deg)}
 svg text{font-family:inherit}
 .btn{display:block;width:100%;padding:15px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-family:var(--display);font-size:14px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;margin-top:6px}
@@ -345,6 +346,8 @@ const fmtDate = d => { const[y,m,dd]=d.split("-"); return `${dd}.${m}.${y}`; };
 const fmtDateS = d => { const[y,m,dd]=d.split("-"); return `${dd}.${m}.${y.slice(2)}`; };
 const wVol = w => w.sets.reduce((s,x)=>s+x.reps*x.wt,0);
 const exVol = (w,nr) => w.sets.filter(s=>s.nr===nr).reduce((s,x)=>s+x.reps*x.wt,0);
+const wReps = w => w.sets.reduce((s,x)=>s+x.reps,0);
+const exReps = (w,nr) => w.sets.filter(s=>s.nr===nr).map(s=>s.reps).join("+");
 
 let CUR="dash";
 function show(v){
@@ -483,11 +486,11 @@ function renderDash(){
   const arrow=delta===null?"":delta>0?"▲ ":delta<0?"▼ ":"= ";
   document.getElementById("statCards").innerHTML=`
     <div class="card"><div class="label">Workouts</div><div class="value">${n}</div><div class="sub">seit ${n?fmtDate(DATA[0].date):"–"}</div></div>
-    <div class="card"><div class="label">Letztes Workout</div><div class="value">${last?relDays(last.date):"–"}</div><div class="sub">${last?fmtDate(last.date)+" · "+fmt(lastVol)+" kg"+(isPR?" · Bestwert!":""):""}</div></div>
+    <div class="card"><div class="label">Letztes Workout</div><div class="value">${last?relDays(last.date):"–"}</div><div class="sub">${last?fmt(lastVol)+" kg · "+wReps(last)+" Wdh."+(isPR?" · Bestwert!":""):""}</div></div>
     <div class="card"><div class="label">Bestes Volumen</div><div class="value">${fmt(best)} kg</div><div class="sub">pro Workout</div></div>
     <div class="card"><div class="label">Trend</div><div class="value" style="color:${delta>=0?"var(--green)":"var(--accent2)"}">${delta===null?"–":arrow+(delta>=0?"+":"")+delta+" %"}</div><div class="sub">vs. vorheriges Workout</div></div>`;
   document.getElementById("chartTotal").innerHTML =
-    lineChart(DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeIcon(w.t):""),y:wVol(w)})));
+    lineChart(DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeIcon(w.t):"")+" · "+wReps(w)+" Wdh.",y:wVol(w)})));
   renderRuns();
   renderChips();
   renderExChart();
@@ -552,7 +555,9 @@ function renderRuns(){
       const a=exVol(r.s,e.nr), b=exVol(r.e,e.nr);
       if(!a&&!b) return "";
       const p=a?Math.round((b-a)/a*100):0;
-      return `<tr><td>${e.short}</td><td class="num">${fmt(a)}</td><td class="num">${fmt(b)}</td>
+      return `<tr><td>${e.short}</td>
+        <td class="num">${fmt(a)}<div class="cellsub">${exReps(r.s,e.nr)} Wdh.</div></td>
+        <td class="num">${fmt(b)}<div class="cellsub">${exReps(r.e,e.nr)} Wdh.</div></td>
         <td class="num" style="color:${p>=0?"var(--green)":"var(--accent2)"}">${p>=0?"+":""}${p} %</td></tr>`;
     }).join("");
     return `<div class="hist-item">
@@ -576,7 +581,7 @@ function renderChips(){
 function selEx(nr){ EXSEL=nr; renderChips(); renderExChart(); }
 function renderExChart(){
   const nr=EXSEL;
-  const pts=DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date),y:exVol(w,nr)})).filter(p=>p.y>0);
+  const pts=DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+" · "+exReps(w,nr)+" Wdh.",y:exVol(w,nr)})).filter(p=>p.y>0);
   document.getElementById("chartEx").innerHTML=lineChart(pts,{color:"#FFFFFF"});
   const all=DATA.flatMap(w=>w.sets.filter(s=>s.nr===nr));
   if(all.length){

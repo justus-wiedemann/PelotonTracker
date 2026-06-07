@@ -75,7 +75,7 @@ input[type=date]{width:auto;min-width:150px;max-width:190px;display:block;-webki
 .chev{color:var(--muted);font-size:17px;transition:transform .15s}
 .cellsub{color:var(--muted);font-size:10.5px;margin-top:1px}
 .ministats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.mini{background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:10px 11px;min-width:0}
+.mini{background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:10px 11px;min-width:0;cursor:pointer}
 .mini .label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mini .val{font-family:var(--display);font-size:15px;font-weight:800;margin-top:4px;white-space:nowrap}
 .mini .sub{color:var(--muted);font-size:11px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -86,7 +86,7 @@ svg text{font-family:inherit}
 .btn.ghost{background:var(--card2);color:var(--text);border:1px solid var(--border);font-weight:600;font-size:14px;padding:11px}
 .btnrow{display:flex;gap:8px;margin-top:8px}
 .btnrow .btn{margin-top:0}
-.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--green);color:#06220f;font-weight:700;padding:12px 22px;border-radius:99px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:50;white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--green);color:#06220f;font-weight:700;padding:12px 22px;border-radius:18px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:50;max-width:86vw;width:max-content;text-align:center;font-size:14px;line-height:1.45}
 .toast.show{opacity:1}
 .hist-item{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden}
 .hist-head{display:flex;justify-content:space-between;align-items:center;padding:14px;cursor:pointer}
@@ -367,9 +367,11 @@ function show(v){
   if(v==="mehr") renderSyncPanel();
   window.scrollTo(0,0);
 }
+let toastTimer=null;
 function toast(msg){
   const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"),1800);
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"), msg.length>40?3500:1800);
 }
 
 /* ---------- SVG line chart ---------- */
@@ -623,21 +625,24 @@ function renderExChart(){
     const gap=bestVol?Math.round((lastV-bestVol)/bestVol*100):0;
     const first=pts[0]?.y||0;
     const growth=first?Math.round((lastV-first)/first*100):0;
+    const t1=`Zuletzt: ${ls.map(s=>s.reps).join(" + ")} Wdh. × ${fmtW(ls[0].wt)} kg = ${fmt(lastV)} kg Volumen`;
+    const t2=`Bestwert ${fmt(bestVol)} kg am ${fmtDate(bestW.date)}${gap>=0?" – aktuell erreicht":" · aktuell "+gap+" % darunter"}`;
+    const t3=`Volumen seit erstem Log: ${growth>=0?"+":""}${growth} %`;
     document.getElementById("exStats").innerHTML=`<div class="ministats">
-      <div class="mini">
-        <div class="label">Letzte Leistung</div>
-        <div class="val">${ls.map(s=>s.reps).join("+")} × ${fmtW(ls[0].wt)} kg</div>
-        <div class="sub">${fmt(lastV)} kg Volumen</div>
+      <div class="mini" title="${t1}" onclick="toast(this.title)">
+        <div class="label">Zuletzt</div>
+        <div class="val">${ls.map(s=>s.reps).join("+")} × ${fmtW(ls[0].wt)}</div>
+        <div class="sub">${fmt(lastV)} kg</div>
       </div>
-      <div class="mini">
+      <div class="mini" title="${t2}" onclick="toast(this.title)">
         <div class="label">Bestwert</div>
         <div class="val">${fmt(bestVol)} kg</div>
-        <div class="sub">${gap>=0?'<span style="color:var(--green)">aktuell erreicht</span>':fmtDateS(bestW.date)+" · "+gap+" %"}</div>
+        <div class="sub">${gap>=0?'<span style="color:var(--green)">jetzt erreicht</span>':fmtDateS(bestW.date)}</div>
       </div>
-      <div class="mini">
-        <div class="label">Seit Start</div>
+      <div class="mini" title="${t3}" onclick="toast(this.title)">
+        <div class="label">Trend</div>
         <div class="val" style="color:${growth>=0?"var(--green)":"var(--accent2)"}">${growth>=0?"+":""}${growth} %</div>
-        <div class="sub">Volumen</div>
+        <div class="sub">seit Start</div>
       </div>
     </div>`;
   } else document.getElementById("exStats").innerHTML="";

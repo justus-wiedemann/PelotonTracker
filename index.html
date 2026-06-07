@@ -209,6 +209,10 @@ svg text{font-family:inherit}
       <div id="chartTotal"></div>
     </div>
     <div class="panel">
+      <h2>Programm-Durchläufe <small>Start → Ende · Zeile antippen für Übungen</small></h2>
+      <div id="runList"></div>
+    </div>
+    <div class="panel">
       <h2>Übungs-Fortschritt</h2>
       <div class="chips" id="exChips"></div>
       <div id="chartEx"></div>
@@ -298,6 +302,20 @@ function cleanData(d){
     })};
   });
   out.sort(cmpW);
+  return autoTag(out);
+}
+/* Einmalige Migration: ungetypte Alt-Logs einordnen.
+   Regel: Log = Start; folgt das nächste ungetypte Log innerhalb von 60 Tagen, ist es das Ende. */
+let TAGGED=false;
+function autoTag(out){
+  for(let i=0;i<out.length;i++){
+    const w=out[i];
+    if(w.t) continue;
+    TAGGED=true;
+    w.t="S";
+    const n=out[i+1];
+    if(n&&!n.t&&(new Date(n.date)-new Date(w.date))/86400000<=60) n.t="E";
+  }
   return out;
 }
 function load(){
@@ -309,6 +327,10 @@ function load(){
 }
 function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(DATA)); }catch(e){} }
 let DATA = load();
+if(TAGGED){ // migrierte Typen sichern und beim nächsten Sync hochschieben
+  persist();
+  try{ localStorage.setItem("tsy-dirty-v1","1"); }catch(e){}
+}
 
 const fmt = n => n.toLocaleString("de-DE");
 const fmtDate = d => { const[y,m,dd]=d.split("-"); return `${dd}.${m}.${y}`; };
@@ -455,8 +477,64 @@ function renderDash(){
     <div class="card"><div class="label">Trend</div><div class="value" style="color:${delta>=0?"var(--green)":"var(--accent2)"}">${delta===null?"–":arrow+(delta>=0?"+":"")+delta+" %"}</div><div class="sub">vs. vorheriges Workout</div></div>`;
   document.getElementById("chartTotal").innerHTML =
     lineChart(DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeLabel(w.t):""),y:wVol(w)})));
+  renderRuns();
   renderChips();
   renderExChart();
+}
+/* Programm-Durchläufe: Start-Log + zugehöriges Ende-Log */
+function getRuns(){
+  const runs=[];
+  for(let i=0;i<DATA.length;i++){
+    if(DATA[i].t!=="S") continue;
+    const next=DATA[i+1];
+    runs.push({s:DATA[i], e:(next&&next.t==="E")?next:null});
+  }
+  return runs;
+}
+function renderRuns(){
+  const el=document.getElementById("runList");
+  const runs=getRuns();
+  if(!runs.length){el.innerHTML='<div class="empty">Noch keine Durchläufe</div>';return;}
+  const done=runs.filter(r=>r.e);
+  let summary="";
+  if(done.length){
+    const deltas=done.map(r=>(wVol(r.e)-wVol(r.s))/wVol(r.s)*100);
+    const avg=Math.round(deltas.reduce((a,b)=>a+b,0)/deltas.length);
+    let sp="";
+    if(done.length>1){
+      const p=Math.round((wVol(done[done.length-1].s)-wVol(done[0].s))/wVol(done[0].s)*100);
+      sp=` · Start-Volumen seit Lauf 1: <b style="color:${p>=0?"var(--green)":"var(--accent2)"}">${p>=0?"+":""}${p} %</b>`;
+    }
+    summary=`<p style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:10px">
+      Ø Verbesserung Start → Ende: <b style="color:${avg>=0?"var(--green)":"var(--accent2)"}">${avg>=0?"+":""}${avg} %</b>${sp}</p>`;
+  }
+  el.innerHTML=summary+runs.map((r,i)=>{
+    const sv=wVol(r.s);
+    if(!r.e){
+      return `<div class="hist-item"><div class="hist-head" style="cursor:default">
+        <span class="d">Lauf ${i+1} · seit ${fmtDate(r.s.date)}</span>
+        <span class="v">${fmt(sv)} kg · läuft</span></div></div>`;
+    }
+    const ev=wVol(r.e);
+    const pct=Math.round((ev-sv)/sv*100);
+    const rows=EXERCISES.map(e=>{
+      const a=exVol(r.s,e.nr), b=exVol(r.e,e.nr);
+      if(!a&&!b) return "";
+      const p=a?Math.round((b-a)/a*100):0;
+      return `<tr><td>${e.short}</td><td class="num">${fmt(a)}</td><td class="num">${fmt(b)}</td>
+        <td class="num" style="color:${p>=0?"var(--green)":"var(--accent2)"}">${p>=0?"+":""}${p} %</td></tr>`;
+    }).join("");
+    return `<div class="hist-item">
+      <div class="hist-head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="d">Lauf ${i+1} · ${fmtDate(r.s.date)} – ${fmtDate(r.e.date)}</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="hdelta ${pct>=0?"up":"down"}">${pct>=0?"▲":"▼"} ${Math.abs(pct)} %</span>
+          <span class="v">${fmt(ev)} kg</span></span>
+      </div>
+      <div class="hist-body">
+        <table><tr><th>Übung</th><th class="num">Start kg</th><th class="num">Ende kg</th><th class="num">Δ</th></tr>${rows}</table>
+      </div></div>`;
+  }).join("");
 }
 function renderChips(){
   document.getElementById("exChips").innerHTML=EXERCISES.map(e=>

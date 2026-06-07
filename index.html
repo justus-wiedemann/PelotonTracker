@@ -74,6 +74,12 @@ input[type=date]{width:auto;min-width:150px;max-width:190px;display:block;-webki
 .runvol{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap}
 .chev{color:var(--muted);font-size:17px;transition:transform .15s}
 .cellsub{color:var(--muted);font-size:10.5px;margin-top:1px}
+.livedot{width:9px;height:9px;border-radius:50%;background:var(--green);flex-shrink:0;animation:livePulse 1.8s ease-out infinite}
+@keyframes livePulse{
+  0%{box-shadow:0 0 0 0 rgba(61,220,132,.55)}
+  70%{box-shadow:0 0 0 9px rgba(61,220,132,0)}
+  100%{box-shadow:0 0 0 0 rgba(61,220,132,0)}
+}
 .ministats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .mini{background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:10px 11px;min-width:0;cursor:pointer}
 .mini .label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -571,7 +577,7 @@ function renderRuns(){
       return `<div class="hist-item">
         <div class="hist-head run-head" onclick="this.parentElement.classList.toggle('open')">
           <span><span class="d">Lauf ${i+1}</span><span class="runsub">seit ${fmtDateS(r.s.date)}</span></span>
-          <span class="runright"><span class="hdelta up">läuft</span><span class="runvol">${fmt(sv)} kg</span><span class="chev">›</span></span>
+          <span class="runright"><span class="livedot" title="Lauf aktiv"></span><span class="runvol">${fmt(sv)} kg</span><span class="chev">›</span></span>
         </div>
         <div class="hist-body">
           <button class="del" onclick="abortRun('${wid(r.s)}')">Lauf abbrechen</button>

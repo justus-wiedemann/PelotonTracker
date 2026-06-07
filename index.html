@@ -25,7 +25,7 @@ html{touch-action:manipulation} /* Doppeltipp-Zoom global aus, Scrollen bleibt *
 button{touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 body{background:var(--bg);color:var(--text);font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding-bottom:40px}
 .wrap{max-width:760px;margin:0 auto;padding:16px}
-header.hero{position:relative;overflow:hidden;text-align:center;padding:38px 16px 34px;
+header.hero{position:relative;overflow:hidden;text-align:center;padding:22px 16px 18px;
   background:linear-gradient(135deg,#5B51FF 0%,#4D43F0 55%,#3D34D8 100%)}
 .hero .stripes{position:absolute;inset:-60% -40%;
   background:repeating-linear-gradient(115deg,transparent 0 80px,rgba(255,255,255,.06) 80px 100px);
@@ -35,9 +35,9 @@ header.hero{position:relative;overflow:hidden;text-align:center;padding:38px 16p
   background:linear-gradient(180deg,transparent,rgba(24,26,29,.55))}
 .hero-in{position:relative;z-index:1;animation:heroIn .7s ease-out both}
 @keyframes heroIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-header .logo{width:140px;height:19px;display:block;margin:0 auto 18px;filter:drop-shadow(0 1px 6px rgba(0,0,0,.25))}
-header h1{font-family:var(--display);font-size:36px;font-weight:800;line-height:1.04;letter-spacing:1px;text-transform:uppercase;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.18)}
-header p{color:rgba(255,255,255,.85);font-family:var(--display);font-size:13px;margin-top:12px;letter-spacing:4px;text-transform:uppercase}
+header .logo{width:112px;height:15px;display:block;margin:0 auto 10px;filter:drop-shadow(0 1px 6px rgba(0,0,0,.25))}
+header h1{font-family:var(--display);font-size:26px;font-weight:800;line-height:1.04;letter-spacing:1px;text-transform:uppercase;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.18)}
+header p{color:rgba(255,255,255,.85);font-family:var(--display);font-size:11px;margin-top:6px;letter-spacing:3px;text-transform:uppercase}
 nav{display:flex;gap:6px;margin:14px 0 18px;background:var(--card);border-radius:12px;padding:4px}
 nav button{flex:1;padding:11px 4px;border:0;background:transparent;color:var(--muted);font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;border-radius:9px;cursor:pointer}
 nav button.active{background:var(--accent);color:#fff}
@@ -141,7 +141,7 @@ svg text{font-family:inherit}
   <div class="stripes"></div>
   <div class="hero-in">
     <img class="logo" width="140" height="19" alt="Peloton" src="Peloton_idVH_YCBXN_0.svg" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMTE3IDE2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjx0aXRsZT5QZWxvdG9uIExvZ288L3RpdGxlPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNNS40MjkwNSA3Ljg2MTc4QzcuMDIzMDIgNy44NjE3OCA4LjAzODE1IDcuMTUyMTggOC4wMzgxNSA1LjQzMjM0QzguMDM4MTUgMy42OTA5OSA2Ljk3NjQgMy4wMjc4MyA1LjQyOTA1IDMuMDI3ODNIMy4yMzQzOFY3Ljg2MTc4SDUuNDI5MDVWNy44NjE3OFpNMCAwLjIwNzAzMUg1LjUxOTIxQzguNzI5MjEgMC4yMDcwMzEgMTEuMzYyMyAxLjc4ODE1IDExLjM2MjMgNS40MzI0QzExLjM2MjMgOS4wNzcyMiA4LjcwNjE5IDEwLjY4MjUgNS41MTkyMSAxMC42ODI1SDMuMjMyMjVWMTUuNzk0N0gwVjAuMjA3MDMxVjAuMjA3MDMxWiIgZmlsbD0iI0ZGRkZGRiIvPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMTYuMTA5NCAwLjIwNzAzMUgyNi41MDA5VjMuMDI3ODlIMTkuMzQxNlY2LjYwMTkzSDI1LjY0NzFWOS4zNTJIMTkuMzQxNlYxMi45NzQ4SDI2LjgyNTNWMTUuNzk0N0gxNi4xMDk0VjAuMjA3MDMxIiBmaWxsPSIjRkZGRkZGIi8+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zMi4yNjU2IDAuMjA3MDMxSDM1LjQ5ODZWMTIuOTc0OEg0Mi42MTIyVjE1Ljc5NDdIMzIuMjY1NlYwLjIwNzAzMSIgZmlsbD0iI0ZGRkZGRiIvPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNNTkuMTUzNiA3Ljk5OTUxQzU5LjE1MzYgNS4wODk0IDU3LjIxMzggMi44NjU0OCA1NC4zNTA2IDIuODY1NDhDNTEuNDg1OCAyLjg2NTQ4IDQ5LjU0NjkgNS4wODk0IDQ5LjU0NjkgNy45OTk1MUM0OS41NDY5IDEwLjkxMSA1MS40ODU4IDEzLjEzNTEgNTQuMzUwNiAxMy4xMzUxQzU3LjIxMzggMTMuMTM1MSA1OS4xNTM2IDEwLjkxMSA1OS4xNTM2IDcuOTk5NTFWNy45OTk1MVpNNDYuMjE4OCA3Ljk5OTQyQzQ2LjIxODggMy4zOTM0NSA0OS44MjEzIDAgNTQuMzQ4IDBDNTguODc0IDAgNjIuNDc1NiAzLjM5MzQ1IDYyLjQ3NTYgNy45OTk0MkM2Mi40NzU2IDEyLjYwNjkgNTguODc0IDE2IDU0LjM0OCAxNkM0OS44MjEzIDE2IDQ2LjIxODggMTIuNjA2OSA0Ni4yMTg4IDcuOTk5NDJWNy45OTk0MloiIGZpbGw9IiNGRkZGRkYiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTcwLjQ0ODcgMy4wMjc4OUg2NS45Njg4VjAuMjA3MDMxSDc4LjE2MjZWMy4wMjc4OUg3My42ODI2VjE1Ljc5NDdINzAuNDQ4N1YzLjAyNzg5IiBmaWxsPSIjRkZGRkZGIi8+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik05NC41NjEgNy45OTk1MUM5NC41NjEgNS4wODk0IDkyLjYyMTIgMi44NjU0OCA4OS43NTc5IDIuODY1NDhDODYuODkzMiAyLjg2NTQ4IDg0Ljk1MzEgNS4wODk0IDg0Ljk1MzEgNy45OTk1MUM4NC45NTMxIDEwLjkxMSA4Ni44OTMyIDEzLjEzNTEgODkuNzU3OSAxMy4xMzUxQzkyLjYyMTIgMTMuMTM1MSA5NC41NjEgMTAuOTExIDk0LjU2MSA3Ljk5OTUxVjcuOTk5NTFaTTgxLjYyNSA3Ljk5OTQyQzgxLjYyNSAzLjM5MzQ1IDg1LjIyODEgMCA4OS43NTUyIDBDOTQuMjgxOCAwIDk3Ljg4MzkgMy4zOTM0NSA5Ny44ODM5IDcuOTk5NDJDOTcuODgzOSAxMi42MDY5IDk0LjI4MTggMTYgODkuNzU1MiAxNkM4NS4yMjgxIDE2IDgxLjYyNSAxMi42MDY5IDgxLjYyNSA3Ljk5OTQyVjcuOTk5NDJaIiBmaWxsPSIjRkZGRkZGIi8+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMDcuNzU4IDguNTQ5NkMxMDYuOTc0IDcuODE2MjIgMTA1Ljg4OCA2LjQxNzc4IDEwNS44ODggNi40MTc3OEMxMDUuODg4IDYuNDE3NzggMTA2LjExOSA4LjEzNjg2IDEwNi4xMTkgOS4yNTk3NlYxNS43OTQxSDEwMy4wOTRWMC4wNjgzNTk0SDEwMy40MTZMMTExLjMzOCA3LjQ1MDg2QzExMi4xIDguMTYwNDYgMTEzLjE4NSA5LjU4MDQgMTEzLjE4NSA5LjU4MDRDMTEzLjE4NSA5LjU4MDQgMTEyLjk3OCA3LjgxNjIyIDExMi45NzggNi43Mzk3NVYwLjIwNjUxSDExNi4wMDJWMTUuOTMwOEgxMTUuNjgxTDEwNy43NTggOC41NDk2IiBmaWxsPSIjRkZGRkZGIi8+PC9zdmc+'">
-    <h1>THE<br>STRONGER<br>YOU&nbsp;2</h1>
+    <h1>THE STRONGER YOU&nbsp;2</h1>
     <p>With Ben · Tracker</p>
   </div>
 </header>

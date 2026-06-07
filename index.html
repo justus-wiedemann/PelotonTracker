@@ -51,16 +51,6 @@ nav button.active{background:var(--accent);color:#fff}
 .panel h2 small{color:var(--muted);font-weight:400;font-size:11px;letter-spacing:.5px}
 select,input[type=date],input[type=password]{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:16px;width:100%}
 svg text{font-family:inherit}
-.ex-block{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
-.ex-block h3{font-size:15px;margin-bottom:2px}
-.ex-block .last{color:var(--muted);font-size:12px;margin-bottom:10px}
-.setrow{display:grid;grid-template-columns:48px 1fr 1fr 70px;gap:8px;align-items:center;margin-bottom:8px}
-.setrow .tag{color:var(--muted);font-size:13px;font-weight:600}
-.setrow input{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:10px;font-size:16px;width:100%;text-align:center}
-.setrow input:focus{outline:none;border-color:var(--accent)}
-.setrow .vol{color:var(--muted);font-size:13px;text-align:right}
-.colhead{display:grid;grid-template-columns:48px 1fr 1fr 70px;gap:8px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding:0 2px}
-.colhead :last-child{text-align:right}
 .btn{display:block;width:100%;padding:15px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-family:var(--display);font-size:14px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;margin-top:6px}
 .btn:active{transform:scale(.99)}
 .btn.ghost{background:var(--card2);color:var(--text);border:1px solid var(--border);font-weight:600;font-size:14px;padding:11px}
@@ -137,7 +127,6 @@ svg text{font-family:inherit}
 @keyframes gateShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-9px)}75%{transform:translateX(9px)}}
 .gate-dots.err{animation:gateShake .3s}
 .banner{background:rgba(255,90,90,.1);border:1px solid var(--accent);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.6;margin-bottom:14px}
-.banner .lnk2{background:none;border:0;color:var(--accent2);font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;padding:0}
 @media(max-width:420px){.cards{grid-template-columns:1fr 1fr}.card .value{font-size:20px}}
 </style>
 </head>
@@ -217,9 +206,7 @@ svg text{font-family:inherit}
 </div>
 <div class="toast" id="toast">Gespeichert ✓</div>
 
-<script src="workouts.js"></script>
 <script>
-const FILE_DATA = (typeof window!=="undefined" && Array.isArray(window.WORKOUTS)) ? window.WORKOUTS : null;
 const EXERCISES = [
   {nr:1, ex:"Push Up", short:"Push Up"}, {nr:2, ex:"Push Press", short:"Push Press"}, {nr:3, ex:"Bent over row", short:"Row"},
   {nr:4, ex:"Dumbbell Romanian deadlift", short:"RDL"}, {nr:5, ex:"Reverse lunge", short:"Lunge"}, {nr:6, ex:"Dumbbell squat", short:"Squat"},
@@ -229,27 +216,14 @@ const KEY = "tsy-workouts-v1";
 
 function sig(d){ return d.length ? d[d.length-1].date+"|"+String(d.length).padStart(4,"0") : "0"; }
 function load(){
-  let ls=null;
   try{
     const raw=localStorage.getItem(KEY);
-    if(raw) ls=JSON.parse(raw);
+    if(raw){ const ls=JSON.parse(raw); ls.sort((a,b)=>a.date.localeCompare(b.date)); return ls; }
   }catch(e){}
-  if(ls){ ls.sort((a,b)=>a.date.localeCompare(b.date)); return ls; }
-  if(FILE_DATA){ // workouts.js nur noch als Erst-Seed, falls vorhanden
-    const fd=JSON.parse(JSON.stringify(FILE_DATA));
-    fd.sort((a,b)=>a.date.localeCompare(b.date));
-    return fd;
-  }
   return [];
 }
 function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(DATA)); }catch(e){} }
 let DATA = load();
-function renderBanner(){ // Banner nur noch für Sync-Fehler (siehe syncErr)
-  document.getElementById("syncBanner").style.display="none";
-}
-function downloadDataFile(){
-  download("workouts.js","window.WORKOUTS = "+JSON.stringify(DATA,null,1)+";","text/javascript");
-}
 
 const fmt = n => n.toLocaleString("de-DE");
 const fmtDate = d => { const[y,m,dd]=d.split("-"); return `${dd}.${m}.${y}`; };
@@ -756,8 +730,7 @@ async function connectSync(){
     try{localStorage.setItem(SYNC_KEY,JSON.stringify({gistId,enc}));}catch(e){}
     SYNC={token:t,gistId}; // nur im Arbeitsspeicher
     toast("Cloud verbunden ✓");
-    renderBanner();
-    await initCloud();
+        await initCloud();
   }catch(e){toast(e.message);}
 }
 async function unlockSync(){
@@ -770,16 +743,14 @@ async function unlockSync(){
     const tok=await decTok(cfg.enc,pin);
     SYNC={token:tok,gistId:cfg.gistId};
     toast("Entsperrt ✓");
-    renderBanner();
-    await initCloud();
+        await initCloud();
   }catch(e){toast("Falsche PIN");}
 }
 function disconnectSync(){
   if(!confirm("Cloud-Sync trennen? Daten bleiben lokal und im Gist erhalten."))return;
   SYNC=null;
   try{localStorage.removeItem(SYNC_KEY);}catch(e){}
-  renderSyncPanel();renderBanner();
-}
+  renderSyncPanel();}
 function syncConfigured(){
   try{const c=JSON.parse(localStorage.getItem(SYNC_KEY));return !!(c&&c.enc&&c.gistId);}catch(e){return false;}
 }
@@ -873,8 +844,7 @@ async function tryAutoUnlock(){
     try{
       const cfg=JSON.parse(localStorage.getItem(SYNC_KEY));
       SYNC={token:await decTok(cfg.enc,GATE_PIN),gistId:cfg.gistId};
-      renderBanner();
-    }catch(e){} // Token war mit anderer PIN verschlüsselt → manuelles Entsperren im Verlauf möglich
+          }catch(e){} // Token war mit anderer PIN verschlüsselt → manuelles Entsperren im Verlauf möglich
   }
   initCloud();
 }
@@ -883,9 +853,16 @@ window.addEventListener("keydown",e=>{
   if(/^[0-9]$/.test(e.key)) gateKey(e.key);
   if(e.key==="Backspace") gateKey("⌫");
 });
+/* Beim Zurückkehren in die App (Tab-Wechsel, Home-Bildschirm) automatisch syncen */
+let lastVisSync=0;
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState!=="visible"||!SYNC||WIZ) return; // nicht mitten im Workout
+  if(Date.now()-lastVisSync<30000) return; // max. alle 30 s
+  lastVisSync=Date.now();
+  initCloud();
+});
 
 renderDash();
-renderBanner();
 renderSyncPanel();
 gateDots();gatePad();
 </script>

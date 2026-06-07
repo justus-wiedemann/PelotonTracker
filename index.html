@@ -822,10 +822,11 @@ function renderSyncPanel(){
 }
 let SYNC=null;
 
-/* ---------- PIN-Gate ---------- */
-const GATE_HASH="7f1a03d4b0aafa1461ec08711d8f1af51e9885ec6a18533b0eec4564d7abfa05";
+/* ---------- PIN-Gate (Hash liegt nur lokal auf dem Gerät, nicht im Code) ---------- */
+const GATE_KEY="tsy-gate-v1";
 const GATE_LEN=6;
-let GATE_PIN="", gateEntry="";
+let GATE_PIN="", gateEntry="", gateSetup=false, gateFirst="";
+function gateHashStored(){ try{return localStorage.getItem(GATE_KEY);}catch(e){return null;} }
 async function sha256hex(s){
   const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));
   return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
@@ -834,26 +835,43 @@ function gateDots(){
   document.getElementById("gateDots").innerHTML=
     Array.from({length:GATE_LEN},(_,i)=>`<i class="${i<gateEntry.length?"on":""}"></i>`).join("");
 }
+function gateSub(t){ document.querySelector("#gate .gate-sub").textContent=t; }
 function gatePad(){
   const keys=["1","2","3","4","5","6","7","8","9","","0","⌫"];
   document.getElementById("gatePad").innerHTML=keys.map(k=>
     `<button class="${k===""?"empty":""}" onclick="gateKey('${k}')">${k}</button>`).join("");
+  gateSetup=!gateHashStored();
+  gateSub(gateSetup?"PIN festlegen":"PIN eingeben");
+}
+function gateErr(){
+  const d=document.getElementById("gateDots");
+  d.classList.add("err");
+  setTimeout(()=>{d.classList.remove("err");gateEntry="";gateDots();},350);
+}
+function gateOpen(pin){
+  GATE_PIN=pin; gateEntry="";
+  document.getElementById("gate").style.display="none";
+  tryAutoUnlock();
 }
 async function gateKey(k){
   if(k==="⌫"){ gateEntry=gateEntry.slice(0,-1); gateDots(); return; }
   if(!k||gateEntry.length>=GATE_LEN) return;
   gateEntry+=k; gateDots();
-  if(gateEntry.length===GATE_LEN){
-    if(await sha256hex("tsy:"+gateEntry)===GATE_HASH){
-      GATE_PIN=gateEntry; gateEntry="";
-      document.getElementById("gate").style.display="none";
-      tryAutoUnlock();
+  if(gateEntry.length<GATE_LEN) return;
+  if(gateSetup){
+    if(!gateFirst){ // erster Durchgang beim Festlegen
+      gateFirst=gateEntry; gateEntry="";
+      gateDots(); gateSub("PIN wiederholen");
+    }else if(gateFirst===gateEntry){
+      try{localStorage.setItem(GATE_KEY,await sha256hex("tsy:"+gateEntry));}catch(e){}
+      gateOpen(gateEntry); gateFirst="";
     }else{
-      const d=document.getElementById("gateDots");
-      d.classList.add("err");
-      setTimeout(()=>{d.classList.remove("err");gateEntry="";gateDots();},350);
+      gateFirst=""; gateSub("Stimmt nicht überein – PIN festlegen"); gateErr();
     }
+    return;
   }
+  if(await sha256hex("tsy:"+gateEntry)===gateHashStored()) gateOpen(gateEntry);
+  else gateErr();
 }
 async function tryAutoUnlock(){
   if(!SYNC&&syncConfigured()){

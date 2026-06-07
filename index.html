@@ -419,6 +419,14 @@ function lineChart(points, opts={}){
   });
   const path=points.map((p,i)=>`${i?"L":"M"}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`).join(" ");
   const area=path+`L${X(points.length-1)},${Y(ymin)}L${X(0)},${Y(ymin)}Z`;
+  // Linie segmentieren: innerhalb eines Laufs durchgezogen, zwischen Läufen gestrichelt & gedimmt
+  let solid="", dashed="";
+  for(let i=0;i<points.length-1;i++){
+    const seg=`M${X(i).toFixed(1)},${Y(points[i].y).toFixed(1)}L${X(i+1).toFixed(1)},${Y(points[i+1].y).toFixed(1)}`;
+    const ro=opts.runOf;
+    const same=ro&&ro[points[i].k]!==undefined&&ro[points[i].k]===ro[points[i+1].k];
+    if(!ro||same) solid+=seg; else dashed+=seg;
+  }
   const best=ys.indexOf(Math.max(...ys));
   let dots="",hits="";
   points.forEach((p,i)=>{
@@ -436,7 +444,8 @@ function lineChart(points, opts={}){
     </linearGradient></defs>
     ${bands}${grid}${labels}
     <path d="${area}" fill="url(#${uid})"/>
-    <path d="${path}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>
+    ${dashed?`<path d="${dashed}" fill="none" stroke="${col}" stroke-width="1.8" stroke-dasharray="4 6" opacity="0.4"/>`:""}
+    <path d="${solid}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>
     ${dots}${hits}
     <g class="ttg" style="display:none;pointer-events:none">
       <rect height="${mob?46:42}" rx="9" fill="#2A2D32" stroke="#33373D"/>
@@ -502,9 +511,12 @@ function renderDash(){
     <div class="card"><div class="label">Letztes Workout</div><div class="value">${last?relDays(last.date):"–"}</div><div class="sub">${last?fmt(lastVol)+" kg · "+wReps(last)+" Wdh."+(isPR?" · Bestwert!":""):""}</div></div>
     <div class="card"><div class="label">Bestes Volumen</div><div class="value">${fmt(best)} kg</div><div class="sub">pro Workout</div></div>
     <div class="card"><div class="label">Trend</div><div class="value" style="color:${delta>=0?"var(--green)":"var(--accent2)"}">${delta===null?"–":arrow+(delta>=0?"+":"")+delta+" %"}</div><div class="sub">vs. vorheriges Workout</div></div>`;
-  const runBands=getRuns().filter(r=>r.e).map(r=>({from:wid(r.s),to:wid(r.e)}));
+  const runs=getRuns();
+  const runBands=runs.filter(r=>r.e).map(r=>({from:wid(r.s),to:wid(r.e)}));
+  const runOf={};
+  runs.forEach((r,i)=>{runOf[wid(r.s)]=i;if(r.e)runOf[wid(r.e)]=i;});
   document.getElementById("chartTotal").innerHTML =
-    lineChart(DATA.map(w=>({k:wid(w),x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeIcon(w.t):"")+" · "+wReps(w)+" Wdh.",y:wVol(w)})),{bands:runBands});
+    lineChart(DATA.map(w=>({k:wid(w),x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeIcon(w.t):"")+" · "+wReps(w)+" Wdh.",y:wVol(w)})),{bands:runBands,runOf});
   renderRuns();
   renderChips();
   renderExChart();
@@ -596,8 +608,11 @@ function selEx(nr){ EXSEL=nr; renderChips(); renderExChart(); }
 function renderExChart(){
   const nr=EXSEL;
   const pts=DATA.map(w=>({k:wid(w),x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+" · "+exReps(w,nr)+" Wdh.",y:exVol(w,nr)})).filter(p=>p.y>0);
-  const runBands=getRuns().filter(r=>r.e).map(r=>({from:wid(r.s),to:wid(r.e)}));
-  document.getElementById("chartEx").innerHTML=lineChart(pts,{color:"#FFFFFF",bands:runBands});
+  const runs=getRuns();
+  const runBands=runs.filter(r=>r.e).map(r=>({from:wid(r.s),to:wid(r.e)}));
+  const runOf={};
+  runs.forEach((r,i)=>{runOf[wid(r.s)]=i;if(r.e)runOf[wid(r.e)]=i;});
+  document.getElementById("chartEx").innerHTML=lineChart(pts,{color:"#FFFFFF",bands:runBands,runOf});
   const all=DATA.flatMap(w=>w.sets.filter(s=>s.nr===nr));
   if(all.length){
     const lastW=[...DATA].reverse().find(w=>w.sets.some(s=>s.nr===nr));

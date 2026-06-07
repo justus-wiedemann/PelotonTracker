@@ -68,6 +68,12 @@ input[type=date]{width:auto;min-width:150px;max-width:190px;display:block;-webki
 .seg button.active{background:var(--accent);color:#fff}
 .seg button.disabled{opacity:.35}
 .tbadge{display:inline-block;background:var(--card2);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:6px}
+.run-head{padding:12px 14px}
+.runsub{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.runright{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.runvol{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap}
+.chev{color:var(--muted);font-size:17px;transition:transform .15s}
+.hist-item.open .chev{transform:rotate(90deg)}
 svg text{font-family:inherit}
 .btn{display:block;width:100%;padding:15px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-family:var(--display);font-size:14px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;margin-top:6px}
 .btn:active{transform:scale(.99)}
@@ -206,11 +212,11 @@ svg text{font-family:inherit}
     <button class="btn" style="margin:0 0 16px" onclick="show('log')">Workout starten</button>
     <div class="cards" id="statCards"></div>
     <div class="panel">
-      <h2>Gesamtvolumen pro Workout <small>(kg) · Punkt antippen für Details</small></h2>
+      <h2>Gesamtvolumen <small>(kg)</small></h2>
       <div id="chartTotal"></div>
     </div>
     <div class="panel">
-      <h2>Programm-Durchläufe <small>Start → Ende · Zeile antippen für Übungen</small></h2>
+      <h2>Programm-Durchläufe</h2>
       <div id="runList"></div>
     </div>
     <div class="panel">
@@ -336,6 +342,7 @@ if(TAGGED){ // migrierte Typen sichern und beim nächsten Sync hochschieben
 
 const fmt = n => n.toLocaleString("de-DE");
 const fmtDate = d => { const[y,m,dd]=d.split("-"); return `${dd}.${m}.${y}`; };
+const fmtDateS = d => { const[y,m,dd]=d.split("-"); return `${dd}.${m}.${y.slice(2)}`; };
 const wVol = w => w.sets.reduce((s,x)=>s+x.reps*x.wt,0);
 const exVol = (w,nr) => w.sets.filter(s=>s.nr===nr).reduce((s,x)=>s+x.reps*x.wt,0);
 
@@ -505,18 +512,19 @@ function renderRuns(){
     let sp="";
     if(done.length>1){
       const p=Math.round((wVol(done[done.length-1].s)-wVol(done[0].s))/wVol(done[0].s)*100);
-      sp=` · Start-Volumen seit Lauf 1: <b style="color:${p>=0?"var(--green)":"var(--accent2)"}">${p>=0?"+":""}${p} %</b>`;
+      sp=` · Start-Vol. seit Lauf 1 <b style="color:${p>=0?"var(--green)":"var(--accent2)"}">${p>=0?"+":""}${p} %</b>`;
     }
-    summary=`<p style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:10px">
-      Ø Verbesserung Start → Ende: <b style="color:${avg>=0?"var(--green)":"var(--accent2)"}">${avg>=0?"+":""}${avg} %</b>${sp}</p>`;
+    summary=`<p style="color:var(--muted);font-size:12px;line-height:1.7;margin-bottom:10px">
+      Ø Start→Ende <b style="color:${avg>=0?"var(--green)":"var(--accent2)"}">${avg>=0?"+":""}${avg} %</b>${sp}</p>`;
   }
   el.innerHTML=summary+runs.map((r,i)=>{
     const sv=wVol(r.s);
     if(!r.e){
       const active=i===runs.length-1; // nur der neueste offene Lauf ist aktiv
-      return `<div class="hist-item"><div class="hist-head" style="cursor:default${active?"":";opacity:.55"}">
-        <span class="d">Lauf ${i+1} · ${active?"seit ":""}${fmtDate(r.s.date)}</span>
-        <span class="v" style="${active?"":"color:var(--muted)"}">${active?fmt(sv)+" kg · läuft":"abgebrochen"}</span></div></div>`;
+      return `<div class="hist-item"><div class="hist-head run-head" style="cursor:default${active?"":";opacity:.5"}">
+        <span><span class="d">Lauf ${i+1}</span><span class="runsub">${active?"seit ":""}${fmtDateS(r.s.date)}</span></span>
+        <span class="runright">${active?`<span class="hdelta up">läuft</span><span class="runvol">${fmt(sv)} kg</span>`:`<span class="runsub" style="margin:0">abgebrochen</span>`}</span>
+      </div></div>`;
     }
     const ev=wVol(r.e);
     const pct=Math.round((ev-sv)/sv*100);
@@ -528,11 +536,13 @@ function renderRuns(){
         <td class="num" style="color:${p>=0?"var(--green)":"var(--accent2)"}">${p>=0?"+":""}${p} %</td></tr>`;
     }).join("");
     return `<div class="hist-item">
-      <div class="hist-head" onclick="this.parentElement.classList.toggle('open')">
-        <span class="d">Lauf ${i+1} · ${fmtDate(r.s.date)} – ${fmtDate(r.e.date)}</span>
-        <span style="display:flex;align-items:center;gap:8px">
+      <div class="hist-head run-head" onclick="this.parentElement.classList.toggle('open')">
+        <span><span class="d">Lauf ${i+1}</span><span class="runsub">${fmtDateS(r.s.date)} – ${fmtDateS(r.e.date)}</span></span>
+        <span class="runright">
           <span class="hdelta ${pct>=0?"up":"down"}">${pct>=0?"▲":"▼"} ${Math.abs(pct)} %</span>
-          <span class="v">${fmt(ev)} kg</span></span>
+          <span class="runvol">${fmt(ev)} kg</span>
+          <span class="chev">›</span>
+        </span>
       </div>
       <div class="hist-body">
         <table><tr><th>Übung</th><th class="num">Start kg</th><th class="num">Ende kg</th><th class="num">Δ</th></tr>${rows}</table>

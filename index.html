@@ -329,7 +329,11 @@ function lineChart(points, opts={}){
     const yr=(p.f||p.x).slice(-4);
     if(yr!==lastYear){
       lastYear=yr;
-      labels+=`<text x="${X(i)}" y="${H-8}" fill="#9BA0A8" font-size="${FS}" text-anchor="${i===0?"start":"middle"}">${yr}</text>`;
+      // am rechten Rand nach links ankern, damit das Label nicht abgeschnitten wird
+      const nearRight=X(i)>W-34;
+      const anchor=i===0?"start":(nearRight?"end":"middle");
+      const lx=nearRight?W-2:X(i);
+      labels+=`<text x="${lx}" y="${H-8}" fill="#9BA0A8" font-size="${FS}" text-anchor="${anchor}">${yr}</text>`;
       if(i>0) grid+=`<line x1="${X(i)}" y1="${P.t}" x2="${X(i)}" y2="${H-P.b}" stroke="#33373D" stroke-width="1" stroke-dasharray="3 4"/>`;
     }
   });

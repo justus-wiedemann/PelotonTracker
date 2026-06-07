@@ -785,7 +785,7 @@ function renderSyncPanel(){
         Einmalig nötig: GitHub-Token (Classic) mit Scope <b style="color:var(--text)">gist</b> unter
         github.com → Settings → Developer settings → Personal access tokens.
         Der Token wird mit deiner App-PIN verschlüsselt (AES-256) und liegt nie im Klartext auf dem Gerät.</p>
-      <div class="field"><label>GitHub-Token</label><input type="password" id="ghToken" placeholder="ghp_…" autocomplete="off"></div>
+      <div class="field"><label>GitHub-Token</label><input type="password" id="ghToken" placeholder="ghp_…" autocomplete="current-password" name="password"></div>
       <button class="btn ghost" onclick="connectSync()">Verbinden</button>`;
   }else{
     p.innerHTML=`<h2>Cloud-Sync</h2>

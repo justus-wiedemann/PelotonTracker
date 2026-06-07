@@ -812,7 +812,7 @@ function renderSyncPanel(){
     p.innerHTML=`<h2>Cloud-Sync</h2>
       <p style="font-size:13px;line-height:1.7;margin-bottom:10px">
         <span style="color:var(--green);font-weight:700">● Verbunden</span>
-        <span style="color:var(--muted)"> · Gist ${SYNC.gistId.slice(0,8)}…
+        <span style="color:var(--muted)"> · Token ${SYNC.token.slice(0,6)}… · Gist ${SYNC.gistId.slice(0,8)}…
         ${LAST_SYNC?"· Letzter Sync "+LAST_SYNC.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})+" Uhr":""}</span>
         ${isDirty()?'<span style="color:var(--accent2)"> · ungesyncte Änderungen</span>':""}</p>
       <div class="btnrow">

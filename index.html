@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>The Stronger You – Tracker</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src data: https://fonts.gstatic.com; img-src 'self' data:; connect-src https://api.github.com https://gist.githubusercontent.com; base-uri 'none'; form-action 'none'">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -215,10 +216,27 @@ const EXERCISES = [
 const KEY = "tsy-workouts-v1";
 
 function sig(d){ return d.length ? d[d.length-1].date+"|"+String(d.length).padStart(4,"0") : "0"; }
+/* Alle Daten von außen (Import, Cloud, localStorage) strikt validieren und normalisieren */
+function cleanData(d){
+  if(!Array.isArray(d)) throw new Error("Ungültiges Format");
+  const byNr=Object.fromEntries(EXERCISES.map(e=>[e.nr,e.ex]));
+  const out=d.map(w=>{
+    if(!w||typeof w.date!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(w.date)||!Array.isArray(w.sets))
+      throw new Error("Ungültiges Format");
+    return {date:w.date, sets:w.sets.map(s=>{
+      const nr=+s.nr, reps=+s.reps, wt=+s.wt;
+      if(!byNr[nr]||!isFinite(reps)||reps<0||reps>999||!isFinite(wt)||wt<0||wt>999)
+        throw new Error("Ungültiges Format");
+      return {nr,ex:byNr[nr],reps,wt};
+    })};
+  });
+  out.sort((a,b)=>a.date.localeCompare(b.date));
+  return out;
+}
 function load(){
   try{
     const raw=localStorage.getItem(KEY);
-    if(raw){ const ls=JSON.parse(raw); ls.sort((a,b)=>a.date.localeCompare(b.date)); return ls; }
+    if(raw) return cleanData(JSON.parse(raw));
   }catch(e){}
   return [];
 }
@@ -628,9 +646,7 @@ function importJSON(input){
   rd.onload=()=>{
     try{
       const t=rd.result.trim();
-      const d=JSON.parse(t.slice(t.indexOf("["), t.lastIndexOf("]")+1)); // akzeptiert .json und workouts.js
-      if(!Array.isArray(d)||!d.every(w=>w.date&&Array.isArray(w.sets)))throw 0;
-      DATA=d;DATA.sort((a,b)=>a.date.localeCompare(b.date));
+      DATA=cleanData(JSON.parse(t.slice(t.indexOf("["), t.lastIndexOf("]")+1))); // akzeptiert .json und workouts.js
       persist();syncAfterChange();renderHist();toast("Import erfolgreich ✓");
     }catch(e){toast("Ungültige Datei");}
   };
@@ -650,10 +666,7 @@ async function cloudPull(){
   if(!f) throw new Error("workouts.json fehlt im Gist");
   let txt=f.content;
   if(f.truncated){const r2=await fetch(f.raw_url);txt=await r2.text();}
-  const d=JSON.parse(txt);
-  if(!Array.isArray(d)) throw new Error("Ungültiges Format");
-  d.sort((a,b)=>a.date.localeCompare(b.date));
-  return d;
+  return cleanData(JSON.parse(txt));
 }
 async function cloudPush(){
   const r=await fetch("https://api.github.com/gists/"+SYNC.gistId,{
@@ -724,24 +737,27 @@ async function connectSync(){
       if(!r.ok) throw new Error("Gist anlegen fehlgeschlagen (HTTP "+r.status+") – hat der Token den Scope „gist“?");
       gistId=(await r.json()).id;
     }
-    const enc=await encTok(t,pin);
-    try{localStorage.setItem(SYNC_KEY,JSON.stringify({gistId,enc}));}catch(e){}
+    const enc=await encTok(JSON.stringify({token:t,gistId}),pin); // Token UND Gist-ID verschlüsselt
+    try{localStorage.setItem(SYNC_KEY,JSON.stringify({enc}));}catch(e){}
     SYNC={token:t,gistId}; // nur im Arbeitsspeicher
     toast("Cloud verbunden ✓");
         await initCloud();
   }catch(e){toast(e.message);}
 }
+async function openCfg(pin){
+  const cfg=JSON.parse(localStorage.getItem(SYNC_KEY));
+  const pt=await decTok(cfg.enc,pin);
+  if(cfg.gistId) return {token:pt,gistId:cfg.gistId}; // altes Format (Gist-ID lag im Klartext)
+  return JSON.parse(pt);
+}
 async function unlockSync(){
   const pin=document.getElementById("pinIn").value;
   if(!pin){toast("PIN eingeben");return;}
-  let cfg=null;
-  try{cfg=JSON.parse(localStorage.getItem(SYNC_KEY));}catch(e){}
-  if(!cfg||!cfg.enc){renderSyncPanel();return;}
+  if(!syncConfigured()){renderSyncPanel();return;}
   try{
-    const tok=await decTok(cfg.enc,pin);
-    SYNC={token:tok,gistId:cfg.gistId};
+    SYNC=await openCfg(pin);
     toast("Entsperrt ✓");
-        await initCloud();
+    await initCloud();
   }catch(e){toast("Falsche PIN");}
 }
 function disconnectSync(){
@@ -750,7 +766,7 @@ function disconnectSync(){
   try{localStorage.removeItem(SYNC_KEY);}catch(e){}
   renderSyncPanel();}
 function syncConfigured(){
-  try{const c=JSON.parse(localStorage.getItem(SYNC_KEY));return !!(c&&c.enc&&c.gistId);}catch(e){return false;}
+  try{const c=JSON.parse(localStorage.getItem(SYNC_KEY));return !!(c&&c.enc);}catch(e){return false;}
 }
 function renderSyncPanel(){
   const p=document.getElementById("syncPanel");
@@ -839,10 +855,8 @@ async function gateKey(k){
 }
 async function tryAutoUnlock(){
   if(!SYNC&&syncConfigured()){
-    try{
-      const cfg=JSON.parse(localStorage.getItem(SYNC_KEY));
-      SYNC={token:await decTok(cfg.enc,GATE_PIN),gistId:cfg.gistId};
-          }catch(e){} // Token war mit anderer PIN verschlüsselt → manuelles Entsperren im Verlauf möglich
+    try{ SYNC=await openCfg(GATE_PIN); }
+    catch(e){} // Token war mit anderer PIN verschlüsselt → manuelles Entsperren im Verlauf möglich
   }
   initCloud();
 }

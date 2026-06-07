@@ -74,6 +74,11 @@ input[type=date]{width:auto;min-width:150px;max-width:190px;display:block;-webki
 .runvol{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap}
 .chev{color:var(--muted);font-size:17px;transition:transform .15s}
 .cellsub{color:var(--muted);font-size:10.5px;margin-top:1px}
+.ministats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mini{background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:10px 11px;min-width:0}
+.mini .label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini .val{font-family:var(--display);font-size:15px;font-weight:800;margin-top:4px;white-space:nowrap}
+.mini .sub{color:var(--muted);font-size:11px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hist-item.open .chev{transform:rotate(90deg)}
 svg text{font-family:inherit}
 .btn{display:block;width:100%;padding:15px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-family:var(--display);font-size:14px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;margin-top:6px}
@@ -586,16 +591,30 @@ function renderExChart(){
   const all=DATA.flatMap(w=>w.sets.filter(s=>s.nr===nr));
   if(all.length){
     const lastW=[...DATA].reverse().find(w=>w.sets.some(s=>s.nr===nr));
-    const lastSetsArr=lastW.sets.filter(s=>s.nr===nr);
-    const lastStr=lastSetsArr.map(s=>s.reps).join(" + ")+" Wdh. × "+fmtW(lastSetsArr[0].wt)+" kg";
+    const ls=lastW.sets.filter(s=>s.nr===nr);
+    const lastV=exVol(lastW,nr);
     const bestVol=Math.max(...pts.map(p=>p.y));
-    const maxReps=Math.max(...all.map(s=>s.reps));
-    const maxWt=Math.max(...all.map(s=>s.wt));
-    const first=pts[0]?.y||0, lastV=pts[pts.length-1]?.y||0;
+    const bestW=DATA.find(w=>exVol(w,nr)===bestVol);
+    const gap=bestVol?Math.round((lastV-bestVol)/bestVol*100):0;
+    const first=pts[0]?.y||0;
     const growth=first?Math.round((lastV-first)/first*100):0;
-    document.getElementById("exStats").innerHTML=
-      `Letztes Mal: <b style="color:var(--text)">${lastStr}</b> · Bestes Volumen: <b style="color:var(--text)">${fmt(bestVol)} kg</b><br>
-       Max. Wdh.: <b style="color:var(--text)">${maxReps}</b> · Max. Gewicht: <b style="color:var(--text)">${fmtW(maxWt)} kg</b> · Volumen seit Start: <b style="color:${growth>=0?"var(--green)":"var(--accent2)"}">${growth>=0?"+":""}${growth} %</b>`;
+    document.getElementById("exStats").innerHTML=`<div class="ministats">
+      <div class="mini">
+        <div class="label">Letzte Leistung</div>
+        <div class="val">${ls.map(s=>s.reps).join("+")} × ${fmtW(ls[0].wt)} kg</div>
+        <div class="sub">${fmt(lastV)} kg Volumen</div>
+      </div>
+      <div class="mini">
+        <div class="label">Bestwert</div>
+        <div class="val">${fmt(bestVol)} kg</div>
+        <div class="sub">${gap>=0?'<span style="color:var(--green)">aktuell erreicht</span>':fmtDateS(bestW.date)+" · "+gap+" %"}</div>
+      </div>
+      <div class="mini">
+        <div class="label">Seit Start</div>
+        <div class="val" style="color:${growth>=0?"var(--green)":"var(--accent2)"}">${growth>=0?"+":""}${growth} %</div>
+        <div class="sub">Volumen</div>
+      </div>
+    </div>`;
   } else document.getElementById("exStats").innerHTML="";
 }
 

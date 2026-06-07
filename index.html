@@ -130,6 +130,12 @@ svg text{font-family:inherit}
 .hdelta.down{color:var(--accent2);background:rgba(255,90,90,.12)}
 .del.neutral{color:var(--text)}
 .hist-body .del{margin-top:0}
+#syncGate{position:fixed;inset:0;background:rgba(24,26,29,.97);z-index:90;display:none;align-items:center;justify-content:center;padding:24px}
+.sg-card{max-width:380px;width:100%;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center}
+.sg-card h2{font-family:var(--display);font-size:15px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
+.sg-card p{color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:14px}
+.sg-card input{margin-bottom:12px}
+.sg-card .lnk{background:none;border:0;color:var(--muted);font-size:14px;cursor:pointer;padding:10px;margin-top:4px}
 #gate{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
 .gate-title{font-family:var(--display);font-size:22px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
 .gate-title span{color:var(--accent)}
@@ -148,6 +154,17 @@ svg text{font-family:inherit}
 </style>
 </head>
 <body>
+<div id="syncGate">
+  <div class="sg-card">
+    <h2>Cloud-Sync einrichten</h2>
+    <p>Füge deinen GitHub-Token ein, um deine Workouts zu laden und automatisch zu sichern.
+       Tippe ins Feld – dein Passwort-Manager schlägt ihn vor.</p>
+    <input type="password" id="ghTokenGate" autocomplete="current-password" name="password" placeholder="ghp_…"
+      onkeydown="if(event.key==='Enter')syncGateConnect()">
+    <button class="btn" onclick="syncGateConnect()">Verbinden</button>
+    <button class="lnk" onclick="hideSyncGate()">Später</button>
+  </div>
+</div>
 <div id="gate">
   <div class="gate-title">THE <span>STRONGER</span> YOU</div>
   <div class="gate-sub">PIN eingeben</div>
@@ -787,10 +804,12 @@ async function decTok(blob,pin){
   return new TextDecoder().decode(pt);
 }
 async function connectSync(){
-  const t=document.getElementById("ghToken").value.trim();
+  return doConnect(document.getElementById("ghToken").value.trim());
+}
+async function doConnect(t){
   const pin=GATE_PIN;
-  if(!t){toast("Bitte Token einfügen");return;}
-  if(!pin){toast("App-PIN fehlt – bitte App neu laden");return;}
+  if(!t){toast("Bitte Token einfügen");return false;}
+  if(!pin){toast("App-PIN fehlt – bitte App neu laden");return false;}
   const h={Authorization:"Bearer "+t,Accept:"application/vnd.github+json","Content-Type":"application/json"};
   try{
     let gistId=null;
@@ -809,8 +828,19 @@ async function connectSync(){
     try{localStorage.setItem(SYNC_KEY,JSON.stringify({enc}));}catch(e){}
     SYNC={token:t,gistId}; // nur im Arbeitsspeicher
     toast("Cloud verbunden ✓");
-        await initCloud();
-  }catch(e){toast(e.message);}
+    await initCloud();
+    return true;
+  }catch(e){toast(e.message);return false;}
+}
+function showSyncGate(){
+  document.getElementById("syncGate").style.display="flex";
+}
+function hideSyncGate(){
+  document.getElementById("syncGate").style.display="none";
+}
+async function syncGateConnect(){
+  const ok=await doConnect(document.getElementById("ghTokenGate").value.trim());
+  if(ok) hideSyncGate();
 }
 async function openCfg(pin){
   const cfg=JSON.parse(localStorage.getItem(SYNC_KEY));
@@ -924,8 +954,9 @@ async function gateKey(k){
 async function tryAutoUnlock(){
   if(!SYNC&&syncConfigured()){
     try{ SYNC=await openCfg(GATE_PIN); }
-    catch(e){} // Token war mit anderer PIN verschlüsselt → manuelles Entsperren im Verlauf möglich
+    catch(e){} // Token war mit anderer PIN verschlüsselt → manuelles Entsperren unter „Mehr“ möglich
   }
+  if(!SYNC&&!syncConfigured()) showSyncGate(); // noch nie eingerichtet → direkt nach PIN abfragen
   initCloud();
 }
 window.addEventListener("keydown",e=>{

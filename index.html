@@ -227,7 +227,6 @@ const EXERCISES = [
 ];
 const KEY = "tsy-workouts-v1";
 
-let FILE_STALE=false;
 function sig(d){ return d.length ? d[d.length-1].date+"|"+String(d.length).padStart(4,"0") : "0"; }
 function load(){
   let ls=null;
@@ -235,24 +234,18 @@ function load(){
     const raw=localStorage.getItem(KEY);
     if(raw) ls=JSON.parse(raw);
   }catch(e){}
-  if(ls) ls.sort((a,b)=>a.date.localeCompare(b.date));
-  if(FILE_DATA){
+  if(ls){ ls.sort((a,b)=>a.date.localeCompare(b.date)); return ls; }
+  if(FILE_DATA){ // workouts.js nur noch als Erst-Seed, falls vorhanden
     const fd=JSON.parse(JSON.stringify(FILE_DATA));
     fd.sort((a,b)=>a.date.localeCompare(b.date));
-    if(ls && sig(ls)>sig(fd)){ FILE_STALE=true; return ls; } // Browser-Cache ist neuer als Datei
     return fd;
   }
-  if(ls){ FILE_STALE=true; return ls; } // Datei fehlt komplett
   return [];
 }
 function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(DATA)); }catch(e){} }
 let DATA = load();
-function renderBanner(){
-  const b=document.getElementById("syncBanner");
-  if(!FILE_STALE || SYNC){ b.style.display="none"; return; } // bei aktivem Cloud-Sync ist die Datei nur noch Seed
-  b.style.display="";
-  b.innerHTML=`Die Daten-Datei <b>workouts.js</b> im App-Ordner ist nicht aktuell.
-    <button class="lnk2" onclick="downloadDataFile()">Aktuelle workouts.js herunterladen</button> und die Datei im Ordner ersetzen.`;
+function renderBanner(){ // Banner nur noch für Sync-Fehler (siehe syncErr)
+  document.getElementById("syncBanner").style.display="none";
 }
 function downloadDataFile(){
   download("workouts.js","window.WORKOUTS = "+JSON.stringify(DATA,null,1)+";","text/javascript");
@@ -699,7 +692,7 @@ async function cloudPush(){
 function syncErr(msg){
   const b=document.getElementById("syncBanner");
   if(msg){ b.style.display=""; b.textContent=msg; }
-  else if(SYNC || !FILE_STALE){ b.style.display="none"; }
+  else b.style.display="none";
 }
 async function initCloud(){
   renderSyncPanel();

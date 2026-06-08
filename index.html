@@ -727,6 +727,9 @@ function renderLog(){
   setLogType(endeOk?"E":"S");
   const w=loadWeights();
   ["heavy","light","body"].forEach(c=>document.getElementById("wg-"+c).value=w[c]);
+  // ggf. von „Gewichte ändern“ veränderte Elemente zurücksetzen
+  document.getElementById("logSetup").querySelector(".panel").style.display="";
+  document.getElementById("logSetup").querySelector(".btn").innerHTML="▶&nbsp;&nbsp;Workout starten";
   document.getElementById("logSetup").style.display="";
   document.getElementById("logWizard").style.display="none";
 }
@@ -749,6 +752,17 @@ function setLogType(t){
   ["S","E"].forEach(x=>document.getElementById("seg-"+x).classList.toggle("active",x===t));
 }
 function startWizard(){
+  // Gewichts-Anpassung im Edit-Modus: Gewichte übernehmen, zurück zur Zusammenfassung
+  if(WIZ&&WIZ.adjustW){
+    WEIGHTS={heavy:+document.getElementById("wg-heavy").value||CATS.heavy.def,
+             light:+document.getElementById("wg-light").value||CATS.light.def,
+             body:+document.getElementById("wg-body").value||CATS.body.def};
+    WIZ.adjustW=false;
+    document.getElementById("logSetup").style.display="none";
+    document.getElementById("logWizard").style.display="";
+    renderSummary();
+    return;
+  }
   const date=document.getElementById("logDate").value;
   if(!date){toast("Bitte Datum wählen");return;}
   const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
@@ -875,7 +889,19 @@ function renderSummary(){
     <p style="color:var(--muted);font-size:12px;margin-top:8px">Tipp: Zeile antippen, um einen Satz zu korrigieren.</p>
   </div>
   <button class="btn" onclick="saveWorkout()">Workout speichern</button>
-  <button class="btn ghost" style="margin-top:8px" onclick="discardWiz()">Verwerfen</button>`;
+  <div class="btnrow" style="margin-top:8px">
+    <button class="btn ghost" onclick="editWeights()">Gewichte ändern</button>
+    <button class="btn ghost" onclick="discardWiz()">Verwerfen</button>
+  </div>`;
+}
+function editWeights(){
+  WIZ.adjustW=true;
+  ["heavy","light","body"].forEach(c=>document.getElementById("wg-"+c).value=WEIGHTS[c]);
+  document.getElementById("logWizard").style.display="none";
+  document.getElementById("logSetup").style.display="";
+  // Datum/Typ-Auswahl im Anpass-Modus ausblenden – es geht nur um Gewichte
+  document.getElementById("logSetup").querySelector(".panel").style.display="none";
+  document.getElementById("logSetup").querySelector(".btn").textContent="Übernehmen";
 }
 function editStep(ix){WIZ.i=ix;renderWiz();}
 function saveWorkout(){

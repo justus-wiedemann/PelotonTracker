@@ -249,6 +249,10 @@ svg text{font-family:inherit}
       <h2>Programm-Durchläufe</h2>
       <div id="runList"></div>
     </div>
+    <div class="panel" id="bwPanel">
+      <h2>Körpergewicht <small>(kg)</small></h2>
+      <div id="chartBW"></div>
+    </div>
     <div class="panel">
       <h2>Übungs-Fortschritt</h2>
       <div class="chips" id="exChips"></div>
@@ -544,8 +548,18 @@ function renderDash(){
   document.getElementById("chartTotal").innerHTML =
     lineChart(DATA.map(w=>({k:wid(w),x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date)+(w.t?" "+typeIcon(w.t):"")+" · "+wReps(w)+" Wdh.",y:wVol(w)})),{bands:runBands,runOf});
   renderRuns();
+  renderBW();
   renderChips();
   renderExChart();
+}
+/* Körpergewicht = das beim Setup eingetragene Gewicht der Körpergewicht-Kategorie */
+function bodyWt(w){ const s=w.sets.find(x=>exCat(x.nr)==="body"); return s?s.wt:null; }
+function renderBW(){
+  const pts=DATA.map(w=>({x:fmtDate(w.date).slice(0,5),f:fmtDate(w.date),y:bodyWt(w)})).filter(p=>p.y);
+  const panel=document.getElementById("bwPanel");
+  if(pts.length<2){ panel.style.display="none"; return; }
+  panel.style.display="";
+  document.getElementById("chartBW").innerHTML=lineChart(pts,{color:"#4DA3FF"});
 }
 function abortRun(id){
   const w=DATA.find(x=>wid(x)===id);

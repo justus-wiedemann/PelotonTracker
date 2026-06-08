@@ -27,7 +27,10 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{touch-action:manipulation} /* Doppeltipp-Zoom global aus, Scrollen bleibt */
-button{touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:transform .08s ease, filter .12s ease, background .12s ease}
+button:active{transform:scale(.96);filter:brightness(1.12)}
+.card,.mini,.chip,.hist-head{transition:transform .08s ease}
+.mini:active,.chip:active,.hist-head:active{transform:scale(.985)}
 body{background:var(--bg);color:var(--text);font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 .wrap{max-width:760px;margin:0 auto;padding:16px}
 section{animation:viewIn .18s ease-out}
@@ -53,8 +56,8 @@ nav#tabbar button{flex:1;max-width:120px;display:flex;flex-direction:column;alig
 nav#tabbar button svg{width:23px;height:23px}
 nav#tabbar button span{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
 nav#tabbar button.active{color:var(--accent)}
-.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
 .card .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
 .card .value{font-family:var(--display);font-size:24px;font-weight:800;margin-top:4px}
 .card .sub{color:var(--muted);font-size:12px;margin-top:2px}
@@ -74,6 +77,15 @@ input[type=date]{width:auto;min-width:150px;max-width:190px;display:block;-webki
 .runvol{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap}
 .chev{color:var(--muted);font-size:17px;transition:transform .15s}
 .cellsub{color:var(--muted);font-size:10.5px;margin-top:1px}
+.prcard{background:rgba(61,220,132,.12);border:1px solid var(--green);color:var(--green);font-weight:700;font-size:13px;padding:10px 14px;border-radius:11px;margin-bottom:12px;animation:prPop .35s ease-out}
+@keyframes prPop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+#syncBar{position:fixed;top:0;left:0;right:0;height:3px;z-index:110;pointer-events:none;opacity:0;transition:opacity .2s}
+#syncBar.on{opacity:1}
+#syncBar i{display:block;height:100%;width:40%;background:var(--accent);border-radius:0 3px 3px 0;animation:syncSlide 1.1s ease-in-out infinite}
+@keyframes syncSlide{0%{margin-left:-40%}100%{margin-left:100%}}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
+.confetti i{position:absolute;top:-12px;width:9px;height:9px;border-radius:2px;animation:confFall 2s ease-in forwards}
+@keyframes confFall{to{transform:translateY(105vh) rotate(540deg);opacity:0}}
 .livedot{width:9px;height:9px;border-radius:50%;background:var(--green);flex-shrink:0;animation:livePulse 1.8s ease-out infinite}
 @keyframes livePulse{
   0%{box-shadow:0 0 0 0 rgba(61,220,132,.55)}
@@ -109,10 +121,15 @@ svg text{font-family:inherit}
 .field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
 .empty{color:var(--muted);text-align:center;padding:30px 0;font-size:14px}
 .pr{display:inline-block;background:rgba(61,220,132,.15);color:var(--green);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:6px}
-.wrow{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}
+.wrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
 .wrow:last-of-type{border-bottom:0}
+.wlabel{display:flex;align-items:center;gap:10px;min-width:0}
+.cdot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cdot.heavy{background:var(--accent)}
+.cdot.light{background:#FFB14D}
+.cdot.body{background:#4DA3FF}
 .wname{font-weight:700;font-size:15px}
-.wsub{color:var(--muted);font-size:11px;margin-top:2px}
+.wsub{color:var(--muted);font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stepper{display:flex;align-items:center;gap:4px;flex-shrink:0}
 .stepper button{width:42px;height:42px;border-radius:11px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:22px;font-weight:700;cursor:pointer}
 .stepper button:active{background:var(--border)}
@@ -177,6 +194,7 @@ svg text{font-family:inherit}
 </style>
 </head>
 <body>
+<div id="syncBar"><i></i></div>
 <div id="syncGate">
   <div class="sg-card">
     <h2>Cloud-Sync einrichten</h2>
@@ -253,19 +271,19 @@ svg text{font-family:inherit}
       <div class="panel">
         <h2>Gewichte für heute <small>(kg)</small></h2>
         <div class="wrow">
-          <div><div class="wname">Schwer</div><div class="wsub">RDL · Reverse Lunge · Squat</div></div>
+          <div class="wlabel"><span class="cdot heavy"></span><div><div class="wname">Schwer</div><div class="wsub">RDL · Reverse Lunge · Squat</div></div></div>
           <div class="stepper"><button onpointerdown="event.preventDefault();stepW('heavy',-1)">−</button><input id="wg-heavy" type="number" inputmode="decimal" step="0.5"><button onpointerdown="event.preventDefault();stepW('heavy',1)">+</button></div>
         </div>
         <div class="wrow">
-          <div><div class="wname">Leicht</div><div class="wsub">Push Press · Row · Renegade · Roll up</div></div>
+          <div class="wlabel"><span class="cdot light"></span><div><div class="wname">Leicht</div><div class="wsub">Push Press · Row · Renegade · Roll up</div></div></div>
           <div class="stepper"><button onpointerdown="event.preventDefault();stepW('light',-1)">−</button><input id="wg-light" type="number" inputmode="decimal" step="0.5"><button onpointerdown="event.preventDefault();stepW('light',1)">+</button></div>
         </div>
         <div class="wrow">
-          <div><div class="wname">Körpergewicht</div><div class="wsub">Push Up · Plank Pike Reach</div></div>
+          <div class="wlabel"><span class="cdot body"></span><div><div class="wname">Körpergewicht</div><div class="wsub">Push Up · Plank Pike Reach</div></div></div>
           <div class="stepper"><button onpointerdown="event.preventDefault();stepW('body',-1)">−</button><input id="wg-body" type="number" inputmode="decimal" step="0.5"><button onpointerdown="event.preventDefault();stepW('body',1)">+</button></div>
         </div>
       </div>
-      <button class="btn" onclick="startWizard()">Workout starten</button>
+      <button class="btn" onclick="startWizard()">▶&nbsp;&nbsp;Workout starten</button>
     </div>
     <div id="logWizard" style="display:none"></div>
   </section>
@@ -828,8 +846,14 @@ function renderSummary(){
   const pv=prev?wVol(prev):null;
   const pct=pv?Math.round((total-pv)/pv*100):null;
   const dchip=pct===null?"":`<span class="hdelta ${pct>=0?"up":"down"}">${pct>=0?"▲ +":"▼ "}${pct} % vs. ${fmtDate(prev.date)}${prev.t?" "+typeIcon(prev.t):""}</span>`;
+  // Bestwert-Erkennung: höchstes Volumen aller anderen Workouts
+  const others=DATA.filter(x=>wid(x)!==WIZ.edit).map(wVol);
+  const isPR=others.length>0 && total>Math.max(...others);
+  WIZ.isPR=isPR;
+  const banner=isPR?`<div class="prcard">🏆 Neuer Bestwert! Bisher max. ${fmt(Math.max(...others))} kg</div>`:"";
   el.innerHTML=`<div class="panel">
     <h2>Zusammenfassung · ${fmtDate(date)} · ${typeIcon(WIZ.type)} ${typeLabel(WIZ.type)}</h2>
+    ${banner}
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-family:var(--display);font-size:26px;font-weight:800;color:var(--accent2)">${fmt(total)} kg</span>${dchip}
     </div>
@@ -857,9 +881,25 @@ function saveWorkout(){
   DATA.sort(cmpW);
   persist();
   syncAfterChange();
+  const wasPR=WIZ.isPR;
   WIZ=null; clearInterval(restIv);
-  toast("Gespeichert ✓");
+  if(wasPR){ celebrate(); toast("🏆 Bestwert gespeichert!"); }
+  else toast("Gespeichert ✓");
   show("dash");
+}
+function celebrate(){
+  const c=document.createElement("div"); c.className="confetti";
+  const cols=["#FF5A5A","#3ddc84","#FFB14D","#4DA3FF","#FFFFFF"];
+  for(let i=0;i<28;i++){
+    const p=document.createElement("i");
+    p.style.left=Math.random()*100+"vw";
+    p.style.background=cols[i%cols.length];
+    p.style.animationDelay=(Math.random()*0.25)+"s";
+    p.style.transform="rotate("+Math.random()*360+"deg)";
+    c.appendChild(p);
+  }
+  document.body.appendChild(c);
+  setTimeout(()=>c.remove(),2200);
 }
 
 /* ---------- Verlauf ---------- */
@@ -979,9 +1019,15 @@ function syncErr(msg){
   if(msg){ b.style.display=""; b.textContent=msg; }
   else b.style.display="none";
 }
+let busyN=0;
+function syncBusy(on){
+  busyN=Math.max(0,busyN+(on?1:-1));
+  document.getElementById("syncBar").classList.toggle("on",busyN>0);
+}
 async function initCloud(){
   renderSyncPanel();
   if(!SYNC) return;
+  syncBusy(true);
   try{
     if(isDirty()){ await cloudPush(); setDirty(false); } // lokale Änderungen zuerst hochschieben
     else{
@@ -991,12 +1037,15 @@ async function initCloud(){
     }
     LAST_SYNC=new Date(); syncErr(null);
   }catch(e){ syncErr("Cloud-Sync fehlgeschlagen ("+e.message+") – Daten sind lokal gesichert."); }
+  syncBusy(false);
   renderSyncPanel();
 }
 async function syncAfterChange(){
   if(!SYNC) return;
+  syncBusy(true);
   try{ await cloudPush(); setDirty(false); LAST_SYNC=new Date(); syncErr(null); toast("Cloud synchron ✓"); }
   catch(e){ setDirty(true); syncErr("Cloud gerade nicht erreichbar – wird beim nächsten Start synchronisiert."); }
+  syncBusy(false);
   renderSyncPanel();
 }
 /* PIN-Verschlüsselung: Token liegt nie im Klartext auf der Platte */

@@ -457,7 +457,7 @@ function lineChart(points, opts={}){
     const same=ro&&ro[points[i].k]!==undefined&&ro[points[i].k]===ro[points[i+1].k];
     if(!ro||same) solid+=seg; else dashed+=seg;
   }
-  const best=ys.indexOf(Math.max(...ys));
+  const best=opts.noBest?-1:ys.indexOf(Math.max(...ys));
   let dots="",hits="";
   points.forEach((p,i)=>{
     const cx=X(i).toFixed(1), cy=Y(p.y).toFixed(1);
@@ -559,7 +559,7 @@ function renderBW(){
   const panel=document.getElementById("bwPanel");
   if(pts.length<2){ panel.style.display="none"; return; }
   panel.style.display="";
-  document.getElementById("chartBW").innerHTML=lineChart(pts,{color:"#4DA3FF"});
+  document.getElementById("chartBW").innerHTML=lineChart(pts,{color:"#4DA3FF",noBest:true});
 }
 function abortRun(id){
   const w=DATA.find(x=>wid(x)===id);
